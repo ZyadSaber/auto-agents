@@ -1,0 +1,306 @@
+version: "3.9"
+
+networks:
+  ai-net:
+    driver: bridge
+
+volumes:
+  ollama-data:
+  chroma-data:
+  anythingllm-storage:
+  docs-agent-db:
+  general-agent-db:
+  openclaw-data:
+
+services:
+
+  # ─────────────────────────────────────────────────────────────
+  # OLLAMA — runs independently, no dependencies
+  # Resource plan (120 GB RAM / 16 cores):
+  #   CPU  : 14 cores reserved for inference
+  #   RAM  : 110 GB — comfortably runs 32b-70b Q4 models + KV cache
+  # ─────────────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - ai-net
+    environment:
+      # ── Keep models hot ───────────────────────────────────────
+      - OLLAMA_KEEP_ALIVE=24h
+      # ── CPU thread count — use every core for inference ───────
+      - OLLAMA_NUM_THREAD=16
+      # ── Parallel inference sessions —————————————————————────
+      # 4 concurrent requests; each session shares all 16 threads.
+      # Lower values = lower latency per request on CPU.
+      - OLLAMA_NUM_PARALLEL=4
+      # ── Keep up to 3 models resident in RAM simultaneously ────
+      - OLLAMA_MAX_LOADED_MODELS=3
+      # ── Flash attention — reduces memory bandwidth pressure ───
+      - OLLAMA_FLASH_ATTENTION=1
+      # ── Large request queue so nothing is dropped under load ──
+      - OLLAMA_MAX_QUEUE=512
+    # Allow mlock so the OS never swaps model weights to disk
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          cpus: "14"
+          memory: 110G
+        reservations:
+          cpus: "8"
+          memory: 80G
+    # GPU: uncomment if you have NVIDIA GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────
+  # CHROMADB — runs independently, no dependencies
+  # Pinned to 0.5.3 to exactly match the Python client package.
+  # ─────────────────────────────────────────────────────────────
+  chromadb:
+    image: chromadb/chroma:0.5.3
+    container_name: chromadb
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    networks:
+      - ai-net
+    environment:
+      - ANONYMIZED_TELEMETRY=false
+      - IS_PERSISTENT=TRUE
+      # Allow ChromaDB to use all available shared memory for HNSW indices
+      - CHROMA_SERVER_THREAD_POOL_SIZE=8
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+        reservations:
+          cpus: "2"
+          memory: 4G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────
+  # DOCS AGENT — waits for both ollama AND chromadb to be healthy
+  # ─────────────────────────────────────────────────────────────
+  docs-agent:
+    build:
+      context: ./agents/docs-agent
+      dockerfile: Dockerfile
+    container_name: docs-agent
+    restart: unless-stopped
+    ports:
+      - "8100:8100"
+    volumes:
+      - docs-agent-db:/app/db
+      - ./uploads:/app/uploads
+    networks:
+      - ai-net
+    depends_on:
+      ollama:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - COLLECTION_NAME=customer_docs
+      - SOLUTIONS_COLLECTION=known_solutions
+      - EMBED_MODEL=nomic-embed-text
+      - CHAT_MODEL=${CHAT_MODEL:-aya-expanse:32b}
+      - UPLOAD_DIR=/app/uploads
+      - DB_PATH=/app/db/solutions.db
+      - PORT=8100
+      - AGENT_API_KEY=${AGENT_API_KEY:-cs-internal-agent-key}
+      - RATE_LIMIT_RPM=${RATE_LIMIT_RPM:-20}
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 2G
+        reservations:
+          cpus: "1"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8100/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ─────────────────────────────────────────────────────────────
+  # GENERAL AGENT — waits only for ollama
+  # ─────────────────────────────────────────────────────────────
+  general-agent:
+    build:
+      context: ./agents/general-agent
+      dockerfile: Dockerfile
+    container_name: general-agent
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    volumes:
+      - general-agent-db:/app/db
+    networks:
+      - ai-net
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - CHAT_MODEL=${CHAT_MODEL:-aya-expanse:32b}
+      - PORT=8200
+      - DB_PATH=/app/db/general_history.db
+      - AGENT_API_KEY=${AGENT_API_KEY:-cs-internal-agent-key}
+      - RATE_LIMIT_RPM=${RATE_LIMIT_RPM:-20}
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 1G
+        reservations:
+          cpus: "1"
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8200/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ─────────────────────────────────────────────────────────────
+  # ANYTHINGLLM — waits for ollama and docs-agent
+  # ─────────────────────────────────────────────────────────────
+  anythingllm:
+    image: mintplexlabs/anythingllm:latest
+    container_name: anythingllm
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - anythingllm-storage:/app/server/storage
+      - ./anythingllm-storage/.env:/app/server/.env
+    networks:
+      - ai-net
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - STORAGE_DIR=/app/server/storage
+      - LLM_PROVIDER=ollama
+      - OLLAMA_BASE_PATH=http://ollama:11434
+      - OLLAMA_MODEL_PREF=${CHAT_MODEL:-aya-expanse:32b}
+      - OLLAMA_MODEL_TOKEN_LIMIT=65536
+      - EMBEDDING_ENGINE=ollama
+      - EMBEDDING_BASE_PATH=http://ollama:11434
+      - EMBEDDING_MODEL_PREF=nomic-embed-text
+      - EMBEDDING_MODEL_MAX_CHUNK_LENGTH=8192
+      - VECTOR_DB=chroma
+      - CHROMA_ENDPOINT=http://chromadb:8000
+      - AUTH_TOKEN=${ANYTHINGLLM_AUTH:-anythingllm-admin-secret}
+      - JWT_SECRET=${JWT_SECRET:-cs-jwt-secret-change-in-production}
+      - AGENT_API_KEY=${AGENT_API_KEY:-cs-internal-agent-key}
+    cap_add:
+      - SYS_ADMIN
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          cpus: "1"
+          memory: 1G
+
+  # ─────────────────────────────────────────────────────────────
+  # OPENCLAW — waits for both agents to be healthy
+  # ─────────────────────────────────────────────────────────────
+  openclaw:
+    build:
+      context: ./openclaw
+      dockerfile: Dockerfile
+    container_name: openclaw
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - openclaw-data:/app/data
+    networks:
+      - ai-net
+    depends_on:
+      docs-agent:
+        condition: service_healthy
+      general-agent:
+        condition: service_healthy
+    environment:
+      - PORT=3100
+      - DOCS_AGENT_URL=http://docs-agent:8100
+      - GENERAL_AGENT_URL=http://general-agent:8200
+      - AGENT_API_KEY=${AGENT_API_KEY:-cs-internal-agent-key}
+      - WHATSAPP_SESSION_NAME=cs-bot
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-your-telegram-bot-token}
+      - ENABLE_WHATSAPP=${ENABLE_WHATSAPP:-true}
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+        reservations:
+          cpus: "1"
+          memory: 256M
+
+  # ─────────────────────────────────────────────────────────────
+  # NGINX — starts last, depends on anythingllm + openclaw
+  # ─────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - ai-net
+    depends_on:
+      - anythingllm
+      - openclaw
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 256M
+        reservations:
+          cpus: "1"
+          memory: 64M
