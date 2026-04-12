@@ -8,7 +8,7 @@ import {
 import { useTranslation } from "react-i18next";
 import Login from "./pages/Login";
 import Chat from "./pages/Chat";
-import "./App.css";
+import { LogOut, Globe } from "lucide-react"; // Import some nice icons
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -40,33 +40,49 @@ function App() {
 
   return (
     <Router>
-      <div className="app-container text-light bg-dark min-vh-100 d-flex flex-column">
+      <div className="flex flex-col min-h-screen">
         {token && (
-          <nav className="navbar navbar-dark bg-secondary px-3">
-            <span className="navbar-brand mb-0 h1">{t("dashboard_title")}</span>
-            <div className="d-flex align-items-center">
-              <span className="me-3">
-                {user?.name} ({user?.role})
+          <nav className="glass sticky top-0 z-50 px-6 py-3 flex items-center justify-between animate-[fadeIn_0.5s_ease-out]">
+            <div className="flex items-center space-x-3 rtl:space-x-reverse">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-violet-600 shadow-lg shadow-brand-500/50 flex items-center justify-center">
+                <span className="text-white font-bold text-lg">CS</span>
+              </div>
+              <span className="font-semibold text-lg tracking-wide text-white">
+                {t("dashboard_title")}
               </span>
-              <select
-                className="form-select form-select-sm bg-dark text-light border-secondary me-3"
-                style={{ width: "80px" }}
-                value={i18n.language}
-                onChange={(e) => changeLanguage(e.target.value)}
-              >
-                <option value="en">EN</option>
-                <option value="ar">عربي</option>
-              </select>
+            </div>
+            
+            <div className="flex items-center space-x-4 rtl:space-x-reverse">
+              <div className="hidden md:flex flex-col items-end rtl:items-start mr-4 rtl:mr-0 rtl:ml-4">
+                <span className="text-sm font-medium text-slate-200">{user?.name}</span>
+                <span className="text-xs text-brand-400 font-medium px-2 py-0.5 rounded-full bg-brand-500/10 border border-brand-500/20">
+                  {user?.role}
+                </span>
+              </div>
+              
+              <div className="relative group flex items-center">
+                <Globe size={18} className="text-slate-400 absolute left-3 rtl:left-auto rtl:right-3 pointer-events-none group-hover:text-brand-400 transition-colors" />
+                <select
+                  className="pl-9 rtl:pl-3 rtl:pr-9 pr-8 py-2 glass-input rounded-lg hover:border-brand-500/50 appearance-none bg-slate-900/80 cursor-pointer text-sm"
+                  value={i18n.language}
+                  onChange={(e) => changeLanguage(e.target.value)}
+                >
+                  <option value="en">English</option>
+                  <option value="ar">العربية</option>
+                </select>
+              </div>
+
               <button
-                className="btn btn-outline-light btn-sm"
+                className="btn-secondary flex items-center space-x-2 rtl:space-x-reverse"
                 onClick={handleLogout}
               >
-                {t("logout")}
+                <LogOut size={16} />
+                <span className="hidden sm:inline">{t("logout")}</span>
               </button>
             </div>
           </nav>
         )}
-        <div className="flex-grow-1 overflow-auto">
+        <main className="flex-grow flex flex-col relative z-10 pt-4 pb-6 px-4 md:px-8 h-full max-h-[calc(100vh-70px)]">
           <Routes>
             <Route
               path="/login"
@@ -85,7 +101,7 @@ function App() {
               }
             />
           </Routes>
-        </div>
+        </main>
       </div>
     </Router>
   );
