@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { Readable } = require("stream");
 const app = express();
 const db = require("./database");
 
@@ -106,6 +107,82 @@ app.get("/api/models", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error("Error fetching models:", err.message);
     res.status(500).json({ error: "Could not fetch models" });
+  }
+});
+
+// Proxy Chat Stream to Ollama
+app.post("/api/chat", authenticateToken, async (req, res) => {
+  try {
+    const ollamaBase = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+    const response = await fetch(`${ollamaBase}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+
+    if (!response.ok) throw new Error(`Ollama Error: ${response.statusText}`);
+
+    res.setHeader("Content-Type", "application/x-ndjson");
+    if (response.body) {
+      Readable.fromWeb(response.body).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (err) {
+    console.error("Chat error:", err.message);
+    if (!res.headersSent) res.status(500).json({ error: "Ollama chat failed" });
+  }
+});
+
+// Proxy Pull Stream
+app.post("/api/models/pull", authenticateToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const ollamaBase = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+    const response = await fetch(`${ollamaBase}/api/pull`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body), // { name: "llama3" }
+    });
+
+    if (!response.ok) throw new Error(`Ollama Error: ${response.statusText}`);
+
+    res.setHeader("Content-Type", "application/x-ndjson");
+    if (response.body) {
+      Readable.fromWeb(response.body).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (err) {
+    console.error("Model pull error:", err.message);
+    if (!res.headersSent) res.status(500).json({ error: "Failed to pull model" });
+  }
+});
+
+// Get currently running models
+app.get("/api/models/ps", authenticateToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const ollamaBase = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+    const response = await fetch(`${ollamaBase}/api/ps`);
+    if (!response.ok) throw new Error("Failed to fetch running models");
+    res.json(await response.json());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a model
+app.delete("/api/models/:name", authenticateToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const ollamaBase = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+    const response = await fetch(`${ollamaBase}/api/delete`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: req.params.name })
+    });
+    if (!response.ok) throw new Error("Failed to delete model");
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

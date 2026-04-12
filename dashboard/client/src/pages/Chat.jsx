@@ -1,6 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
+import {
+  Send,
+  Bot,
+  User,
+  Settings2,
+  Loader2,
+  MessageSquare,
+} from "lucide-react";
 
 function Chat({ token }) {
   const { t } = useTranslation();
@@ -8,10 +16,10 @@ function Chat({ token }) {
   const [selectedModel, setSelectedModel] = useState("");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    // We'll fetch models from our backend proxy
-    // For now, hardcode or fetch if the endpoint is ready
     axios
       .get("/api/models", { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
@@ -23,70 +31,222 @@ function Chat({ token }) {
       .catch((err) => console.error("Could not load models", err));
   }, [token]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    setMessages((prev) => [...prev, { role: "user", content: input }]);
+  // Auto scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || isStreaming) return;
+    
+    const userMsg = { role: "user", content: input };
+    const contextMessages = [...messages, userMsg];
+    
+    setMessages(contextMessages);
     setInput("");
-    // TODO: wire up to the actual chat endpoint
+    setIsStreaming(true);
+
+    try {
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          model: selectedModel || "llama3", // default fallback
+          messages: contextMessages.map(m => ({ role: m.role, content: m.content })),
+          stream: true,
+        }),
+      });
+
+      if (!response.body) throw new Error("No response body");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage = "";
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        
+        buffer = lines.pop(); // keep incomplete line
+        
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.message?.content) {
+                assistantMessage += parsed.message.content;
+                setMessages((prev) => {
+                  const newArr = [...prev];
+                  newArr[newArr.length - 1] = { ...newArr[newArr.length - 1], content: assistantMessage };
+                  return newArr;
+                });
+              }
+            } catch (e) {
+              console.error("JSON parse error:", e);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Chat error:", err);
+      setMessages((prev) => {
+        const newArr = [...prev];
+        if (newArr[newArr.length - 1].content === "") {
+            newArr[newArr.length - 1].content = "⚠️ **Connection Error**: Could not reach Ollama API.";
+        }
+        return newArr;
+      });
+    } finally {
+      setIsStreaming(false);
+    }
   };
 
   return (
-    <div className="d-flex flex-column h-100 p-3">
-      <div className="d-flex justify-content-between mb-3">
-        <h4>{t("chat_title")}</h4>
-        <select
-          className="form-select bg-dark text-light border-secondary w-auto"
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
-        >
-          {models.length === 0 ? (
-            <option>{t("loading_models")}</option>
-          ) : (
-            models.map((m) => (
-              <option key={m.name} value={m.name}>
-                {m.name}
-              </option>
-            ))
-          )}
-        </select>
-      </div>
+    <div className="flex flex-col md:flex-row h-full grow w-full gap-6 animate-fade-in">
+      {/* Sidebar: Settings & Models */}
+      <aside className="w-full md:w-72 glass-panel rounded-2xl p-5 flex flex-col shrink-0">
+        <div className="flex items-center space-x-2 rtl:space-x-reverse mb-6 pb-4 border-b border-slate-700/50">
+          <Settings2 size={20} className="text-brand-400" />
+          <h3 className="font-semibold text-lg">{t("chat_title")}</h3>
+        </div>
 
-      <div
-        className="flex-grow-1 border border-secondary rounded p-3 mb-3 overflow-auto"
-        style={{ backgroundColor: "#212529" }}
-      >
-        {messages.length === 0 && (
-          <p className="text-muted text-center mt-5">
-            {t("start_conversation")}
-          </p>
-        )}
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`mb-3 ${msg.role === "user" ? "text-end" : "text-start"}`}
-          >
-            <div
-              className={`d-inline-block p-2 rounded ${msg.role === "user" ? "bg-primary text-white" : "bg-secondary text-light"}`}
+        <div className="flex flex-col space-y-2">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Language Model
+          </label>
+          <div className="relative">
+            <select
+              className="w-full glass-input rounded-xl py-3 pl-4 pr-10 rtl:pr-4 rtl:pl-10 appearance-none bg-slate-900/50 cursor-pointer"
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
             >
-              {msg.content}
+              {models.length === 0 ? (
+                <option>{t("loading_models")}</option>
+              ) : (
+                models.map((m) => (
+                  <option key={m.name} value={m.name}>
+                    {m.name}
+                  </option>
+                ))
+              )}
+            </select>
+            <div className="absolute inset-y-0 right-0 rtl:right-auto rtl:left-0 flex items-center pr-3 rtl:pl-3 pointer-events-none text-slate-500">
+              <Bot size={16} />
             </div>
           </div>
-        ))}
-      </div>
+          <p className="text-xs text-slate-500 mt-2 px-1">
+            Toggle which local backend serves your query.
+          </p>
+        </div>
 
-      <div className="input-group">
-        <input
-          type="text"
-          className="form-control bg-dark text-light border-secondary"
-          placeholder={t("ask_placeholder")}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-        />
-        <button className="btn btn-primary" onClick={handleSend}>
-          {t("send_btn")}
-        </button>
-      </div>
+        <div className="mt-auto pt-6">
+          <div className="bg-brand-500/10 border border-brand-500/20 rounded-xl p-4 flex items-start space-x-3 rtl:space-x-reverse">
+            <MessageSquare
+              size={18}
+              className="text-brand-400 mt-0.5 shrink-0"
+            />
+            <div>
+              <p className="text-sm text-brand-300 font-medium">
+                Session Active
+              </p>
+              <p className="text-xs text-brand-400/70 mt-1">
+                Chat history is not yet persisting.
+              </p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Chat Area */}
+      <section className="grow flex flex-col glass rounded-2xl relative overflow-hidden">
+        {/* Messages List */}
+        <div className="grow overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth">
+          {messages.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center opacity-50 select-none">
+              <Bot size={48} className="text-slate-600 mb-4" />
+              <p className="text-lg text-slate-400 font-medium">
+                {t("start_conversation")}
+              </p>
+            </div>
+          ) : (
+            messages.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-[slideUp_0.3s_ease-out]`}
+              >
+                <div
+                  className={`flex max-w-[85%] md:max-w-[75%] ${msg.role === "user" ? "flex-row-reverse" : "flex-row"} items-end`}
+                >
+                  {/* Avatar Avatar */}
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mx-2 shadow-md
+                    ${msg.role === "user" ? "bg-linear-to-tr from-brand-600 to-indigo-400" : "bg-slate-800 border border-slate-700"}
+                  `}
+                  >
+                    {msg.role === "user" ? (
+                      <User size={14} className="text-white" />
+                    ) : (
+                      <Bot size={14} className="text-brand-400" />
+                    )}
+                  </div>
+
+                  {/* Message Bubble */}
+                  <div
+                    className={`px-4 py-3 shadow-lg ${
+                      msg.role === "user"
+                        ? "bg-brand-600 text-white rounded-2xl rounded-br-sm rtl:rounded-bl-sm rtl:rounded-br-2xl"
+                        : "bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 text-slate-200 rounded-2xl rounded-bl-sm rtl:rounded-br-sm rtl:rounded-bl-2xl"
+                    }`}
+                  >
+                    <p className="leading-relaxed whitespace-pre-wrap">
+                      {msg.content}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} className="h-4" />
+        </div>
+
+        {/* Input Area */}
+        <div className="p-4 md:p-6 bg-slate-900/40 backdrop-blur-md border-t border-slate-800 shrink-0 w-full">
+          <div className="relative flex items-center max-w-4xl mx-auto">
+            <input
+              type="text"
+              className="w-full bg-slate-950/60 backdrop-blur-md border border-slate-700/60 rounded-full py-4 pl-6 pr-14 rtl:pr-6 rtl:pl-14 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/80 transition-all shadow-inner"
+              placeholder={t("ask_placeholder")}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            />
+            <button
+              className="absolute right-2 rtl:right-auto rtl:left-2 p-2.5 rounded-full bg-brand-500 hover:bg-brand-400 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-brand-500/20"
+              onClick={handleSend}
+              disabled={!input.trim()}
+            >
+              <Send
+                size={18}
+                className="rtl:rotate-180 transform -translate-x-px rtl:translate-x-px"
+              />
+            </button>
+          </div>
+          <div className="text-center mt-2">
+            <span className="text-[10px] text-slate-500">
+              AI can make mistakes. Consider verifying important information.
+            </span>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

@@ -34,7 +34,9 @@ const GENERAL_AGENT_URL = process.env.GENERAL_AGENT_URL || 'http://general-agent
 const AGENT_API_KEY     = process.env.AGENT_API_KEY     || 'cs-internal-agent-key';
 const ENABLE_WHATSAPP   = process.env.ENABLE_WHATSAPP   !== 'false';
 const ENABLE_TELEGRAM   = process.env.ENABLE_TELEGRAM   !== 'false';
+const ENABLE_SECOND_TELEGRAM = process.env.ENABLE_SECOND_TELEGRAM === 'true';
 const TELEGRAM_TOKEN    = process.env.TELEGRAM_BOT_TOKEN || '';
+const SECOND_TELEGRAM_TOKEN = process.env.SECOND_TELEGRAM_BOT_TOKEN || '';
 const SESSION_DIR       = '/app/data/whatsapp-session';
 
 // ── Axios instance with API key always attached ───────────────────────────────
@@ -331,6 +333,87 @@ async function startTelegram() {
   });
 }
 
+// ── Second Telegram (Issues Handler) ──────────────────────────────────────────
+async function startSecondTelegram() {
+  if (!ENABLE_SECOND_TELEGRAM) { logger.info('Second Telegram disabled.'); return; }
+
+  const token = SECOND_TELEGRAM_TOKEN;
+  if (!token || token === 'your-second-bot-token-here') {
+    logger.info('Second Telegram: no token set — skipping. Set SECOND_TELEGRAM_BOT_TOKEN to enable.');
+    return;
+  }
+
+  let TelegramBot;
+  try { TelegramBot = require('node-telegram-bot-api'); }
+  catch { logger.warn('node-telegram-bot-api not installed.'); return; }
+
+  try {
+    const cleanupBot = new TelegramBot(token, { polling: false });
+    await cleanupBot.deleteWebhook();
+    logger.info('Second Telegram: webhook cleared.');
+  } catch (e) {
+    logger.warn(`Second Telegram webhook clear failed (non-fatal): ${e.message}`);
+  }
+
+  const bot = new TelegramBot(token, {
+    polling: {
+      interval: 1000,
+      autoStart: true,
+      params: { timeout: 10 },
+    }
+  });
+
+  logger.info('Second Telegram bot started (polling)');
+
+  async function send(chatId, text) {
+    try {
+      if (text.length <= 4000) {
+        await bot.sendMessage(chatId, text);
+      } else {
+        const parts = text.match(/.{1,4000}/gs) || [text];
+        for (const part of parts) {
+          await bot.sendMessage(chatId, part);
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+    } catch (err) {
+      logger.error(`Second Telegram send failed [${chatId}]: ${err.message}`);
+    }
+  }
+
+  bot.onText(/\/start/, msg => {
+    send(msg.chat.id, 'Welcome to the specialized support channel.');
+  });
+
+  bot.onText(/\/help/, msg => {
+    send(msg.chat.id, 'Type your issue and we will route it properly.');
+  });
+
+  bot.on('message', async msg => {
+    if (!msg.text || msg.text.startsWith('/')) return;
+    const sessionId = `tg2_${msg.chat.id}`;
+    logger.info(`[TG2:${msg.chat.id}] "${msg.text.slice(0, 60)}"`);
+
+    try { await bot.sendChatAction(msg.chat.id, 'typing'); } catch (_) {}
+    
+    // Auto route logic or specialized logic
+    const response = await queryAgent(msg.text.trim(), sessionId);
+    await send(msg.chat.id, response);
+  });
+
+  bot.on('polling_error', err => {
+    const code = err.response?.statusCode || err.code;
+    logger.error(`Second Telegram polling error [${code}]: ${err.message}`);
+    if (code === 409) {
+      bot.stopPolling().then(() => bot.deleteWebhook()).then(() => setTimeout(() => bot.startPolling(), 3000));
+    }
+  });
+
+  bot.on('error', err => {
+    logger.error(`Second Telegram error: ${err.message}`);
+  });
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   app.listen(PORT, () => {
@@ -340,7 +423,7 @@ async function main() {
   });
 
   await new Promise(r => setTimeout(r, 5000));   // wait for agents to start
-  await Promise.allSettled([startWhatsApp(), startTelegram()]);
+  await Promise.allSettled([startWhatsApp(), startTelegram(), startSecondTelegram()]);
 }
 
 main().catch(err => {
