@@ -270,6 +270,21 @@ async def clear_history(session_id: str):
     con.close()
     return {"message": f"History cleared for '{session_id}'"}
 
+@app.get("/sessions", dependencies=[Depends(require_api_key)])
+async def get_sessions():
+    """Retrieve all unique session IDs and their latest message timestamp."""
+    con = get_db()
+    cursor = con.cursor()
+    cursor.execute("""
+        SELECT session_id, MAX(created_at) as last_seen 
+        FROM chat_history 
+        GROUP BY session_id 
+        ORDER BY last_seen DESC
+    """)
+    sessions = [{"session_id": r[0], "last_seen": r[1]} for r in cursor.fetchall()]
+    con.close()
+    return sessions
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=False)

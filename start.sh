@@ -47,18 +47,21 @@ docker compose up -d docs-agent general-agent
 wait_for "Docs Agent"    "http://localhost:8100/health" 40
 wait_for "General Agent" "http://localhost:8200/health" 40
 
-log "=== Step 3: Starting AnythingLLM and OpenClaw ==="
-docker compose up -d anythingllm openclaw
+log "=== Step 3: Starting Dashboard, OpenClaw and AnythingLLM ==="
+docker compose up -d cs-dashboard openclaw anythingllm
+
+wait_for "CS Dashboard" "http://localhost:3001/api/health" 40
+wait_for "OpenClaw"     "http://localhost:3100/health" 30
 
 log "=== Step 4: Starting Nginx ==="
 docker compose up -d nginx
 
 echo ""
 log "════════════════════════════════════════"
-log "  All services are running!"
 log "════════════════════════════════════════"
 echo -e "  Staff UI:     ${YELLOW}http://localhost${NC}"
 echo -e "  WhatsApp QR:  ${YELLOW}http://localhost/qr${NC}"
+echo -e "  Bridge (TG):  ${YELLOW}http://localhost/bridge/health${NC}"
 echo -e "  Docs API:     ${YELLOW}http://localhost/api/docs/health${NC}"
 echo -e "  General API:  ${YELLOW}http://localhost/api/general/health${NC}"
 echo ""

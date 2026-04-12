@@ -481,12 +481,28 @@ async def list_solutions(limit: int = 50):
     return [dict(r) for r in rows]
 
 @app.delete("/history/{session_id}", dependencies=[Depends(require_api_key)])
-async def clear_user_history(session_id: str):
+async def clear_history(session_id: str):
     con = get_db()
-    con.execute("DELETE FROM chat_history WHERE session_id=?", (session_id,))
+    cursor = con.cursor()
+    cursor.execute("DELETE FROM chat_history WHERE session_id=?", (session_id,))
     con.commit()
     con.close()
     return {"message": f"History cleared for '{session_id}'"}
+
+@app.get("/sessions", dependencies=[Depends(require_api_key)])
+async def get_sessions():
+    """Retrieve all unique session IDs and their latest message timestamp."""
+    con = get_db()
+    cursor = con.cursor()
+    cursor.execute("""
+        SELECT session_id, MAX(created_at) as last_seen 
+        FROM chat_history 
+        GROUP BY session_id 
+        ORDER BY last_seen DESC
+    """)
+    sessions = [{"session_id": r[0], "last_seen": r[1]} for r in cursor.fetchall()]
+    con.close()
+    return sessions
 
 if __name__ == "__main__":
     import uvicorn

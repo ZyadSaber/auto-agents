@@ -10,6 +10,9 @@ import { useTranslation } from "react-i18next";
 import Login from "./pages/Login";
 import Chat from "./pages/Chat";
 import LLMManager from "./pages/LLMManager";
+import DocumentsManager from "./pages/DocumentsManager";
+import KnowledgeBase from "./pages/KnowledgeBase";
+import OpenClawManager from "./pages/OpenClawManager";
 import {
   LogOut,
   Globe,
@@ -222,39 +225,15 @@ function App() {
               />
               <Route
                 path="/documents"
-                element={
-                  <div className="glass rounded-xl p-8 h-full flex flex-col items-center justify-center text-slate-400">
-                    <Files size={48} className="mb-4 text-slate-600" />
-                    <h2 className="text-xl font-bold text-slate-200">
-                      Documents Manager
-                    </h2>
-                    <p>Coming in Phase 3</p>
-                  </div>
-                }
+                element={token ? <DocumentsManager token={token} /> : <Navigate to="/login" />}
               />
               <Route
                 path="/knowledge"
-                element={
-                  <div className="glass rounded-xl p-8 h-full flex flex-col items-center justify-center text-slate-400">
-                    <BookOpen size={48} className="mb-4 text-slate-600" />
-                    <h2 className="text-xl font-bold text-slate-200">
-                      Knowledge Base
-                    </h2>
-                    <p>Coming in Phase 3</p>
-                  </div>
-                }
+                element={token ? <KnowledgeBase token={token} /> : <Navigate to="/login" />}
               />
               <Route
                 path="/openclaw"
-                element={
-                  <div className="glass rounded-xl p-8 h-full flex flex-col items-center justify-center text-slate-400">
-                    <Smartphone size={48} className="mb-4 text-slate-600" />
-                    <h2 className="text-xl font-bold text-slate-200">
-                      OpenClaw WhatsApp/Telegram Manager
-                    </h2>
-                    <p>Coming in Phase 4</p>
-                  </div>
-                }
+                element={token ? <OpenClawManager token={token} /> : <Navigate to="/login" />}
               />
               <Route
                 path="/monitor"

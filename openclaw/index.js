@@ -14,6 +14,8 @@ const axios     = require('axios');
 const NodeCache = require('node-cache');
 const winston   = require('winston');
 const QRCode    = require('qrcode');
+const fs        = require('fs');
+const path      = require('path');
 
 // ── Logger ────────────────────────────────────────────────────────────────────
 const logger = winston.createLogger({
@@ -35,9 +37,37 @@ const AGENT_API_KEY     = process.env.AGENT_API_KEY     || 'cs-internal-agent-ke
 const ENABLE_WHATSAPP   = process.env.ENABLE_WHATSAPP   !== 'false';
 const ENABLE_TELEGRAM   = process.env.ENABLE_TELEGRAM   !== 'false';
 const ENABLE_SECOND_TELEGRAM = process.env.ENABLE_SECOND_TELEGRAM === 'true';
-const TELEGRAM_TOKEN    = process.env.TELEGRAM_BOT_TOKEN || '';
-const SECOND_TELEGRAM_TOKEN = process.env.SECOND_TELEGRAM_BOT_TOKEN || '';
-const SESSION_DIR       = '/app/data/whatsapp-session';
+const SESSION_DIR       = process.env.SESSION_DIR || '/app/data/whatsapp-session';
+const CONFIG_PATH       = process.env.CONFIG_PATH  || '/app/data/openclaw_config.json';
+
+// --- Global Config Load/Save ---
+let config = {
+  tgToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  cuToken: process.env.CLICKUP_API_KEY || '',
+  cuTeam:  process.env.CLICKUP_TEAM_ID  || '',
+  cuList:  process.env.CLICKUP_LIST_ID  || '',
+};
+
+function loadConfig() {
+  try {
+    if (fs.existsSync(CONFIG_PATH)) {
+      const saved = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+      config = { ...config, ...saved };
+      logger.info('External config loaded.');
+    }
+  } catch (err) { logger.error('Failed to load config.json: ' + err.message); }
+}
+
+function saveConfig() {
+  try {
+    const dir = path.dirname(CONFIG_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+    logger.info('External config saved.');
+  } catch (err) { logger.error('Failed to save config.json: ' + err.message); }
+}
+
+loadConfig();
 
 // ── Axios instance with API key always attached ───────────────────────────────
 const agentHttp = axios.create({
@@ -112,6 +142,31 @@ async function clearUserHistory(sessionId) {
   logger.info(`Cleared history: ${sessionId}`);
 }
 
+// ── ClickUp Integration ───────────────────────────────────────────────────────
+async function createClickUpTask(description, customerSession) {
+  if (!config.cuToken || !config.cuList) {
+    logger.warn('ClickUp not configured.');
+    return null;
+  }
+  try {
+    const url = `https://api.clickup.com/api/v2/list/${config.cuList}/task`;
+    const res = await axios.post(url, {
+      name: `Report from ${customerSession}`,
+      description: description,
+      status: "to do",
+      priority: 3,
+      tags: ["ai-report", customerSession.startsWith('wa') ? "whatsapp" : "telegram"]
+    }, {
+      headers: { 'Authorization': config.cuToken }
+    });
+    logger.info(`ClickUp task created: ${res.data.url}`);
+    return res.data;
+  } catch (err) {
+    logger.error('ClickUp creation failed: ' + (err.response?.data?.text || err.message));
+    return null;
+  }
+}
+
 // ── Express ───────────────────────────────────────────────────────────────────
 const app = express();
 app.use(express.json());
@@ -150,12 +205,52 @@ app.post('/send', async (req, res) => {
   res.json({ response });
 });
 
+app.post('/api/config', (req, res) => {
+  const { tgToken, cuToken, cuTeam, cuList } = req.body;
+  if (tgToken !== undefined) config.tgToken = tgToken;
+  if (cuToken !== undefined) config.cuToken = cuToken;
+  if (cuTeam  !== undefined) config.cuTeam  = cuTeam;
+  if (cuList  !== undefined) config.cuList  = cuList;
+  saveConfig();
+  
+  // Trigger hot-reload of bots
+  if (tgToken !== undefined) {
+    logger.info('Telegram token changed, restarting bot...');
+    startTelegram(); 
+  }
+  res.json({ success: true, config });
+});
+
+app.post('/api/whatsapp/reset', async (req, res) => {
+  whatsappReady = false;
+  whatsappQR = null;
+  try {
+    // Properly destroy existing client to release locks/puppeteer
+    if (global.waClient) {
+      try { await global.waClient.destroy(); } catch(e){}
+    }
+    if (fs.existsSync(SESSION_DIR)) {
+      fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+    }
+    logger.info('WhatsApp session cleared. Rebooting client...');
+    startWhatsApp(); // Re-init
+    res.json({ success: true, message: 'WhatsApp session reset initiated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── WhatsApp ──────────────────────────────────────────────────────────────────
 async function startWhatsApp() {
   if (!ENABLE_WHATSAPP) { logger.info('WhatsApp disabled.'); return; }
   let Client, LocalAuth;
   try { ({ Client, LocalAuth } = require('whatsapp-web.js')); }
   catch { logger.warn('whatsapp-web.js not found — WhatsApp disabled.'); return; }
+  
+  // If there's an existing client, try to destroy it first
+  if (global.waClient) {
+    try { await global.waClient.destroy(); } catch(e){}
+  }
 
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: SESSION_DIR }),
@@ -182,9 +277,16 @@ async function startWhatsApp() {
     if (['/clear','/مسح'].includes(lower))     { await clearUserHistory(sessionId);  return msg.reply('History cleared.\nتم مسح المحادثة.'); }
     if (['/help','/مساعدة'].includes(lower))   {
       return msg.reply(
-        'Commands:\n/docs - Document Agent\n/general - General Agent\n/auto - Auto-route\n/clear - Clear history\n\n' +
-        'الأوامر:\n/docs - وكيل المستندات\n/general - الوكيل العام\n/auto - تلقائي\n/clear - مسح'
+        'Commands:\n/docs - Document Agent\n/general - General Agent\n/auto - Auto-route\n/clear - Clear history\n/report [text] - File ClickUp issue\n\n' +
+        'الأوامر:\n/docs - وكيل المستندات\n/general - الوكيل العام\n/auto - تلقائي\n/clear - مسح\n/report [نص] - إبلاغ عن مشكلة'
       );
+    }
+
+    if (lower.startsWith('/report ') || lower.startsWith('/إبلاغ ')) {
+      const desc = body.split(' ').slice(1).join(' ');
+      if (!desc) return msg.reply('Please provide report details.\nيرجى تقديم تفاصيل البلاغ.');
+      const task = await createClickUpTask(desc, sessionId);
+      return msg.reply(task ? `Task created: ${task.url}\nتم إنشاء المهمة: ${task.url}` : 'Failed to create task.\nفشل إنشاء المهمة.');
     }
 
     const chat = await msg.getChat();
@@ -193,6 +295,7 @@ async function startWhatsApp() {
     await msg.reply(response);
   });
 
+  global.waClient = client;
   await client.initialize();
 }
 
@@ -200,10 +303,15 @@ async function startWhatsApp() {
 async function startTelegram() {
   if (!ENABLE_TELEGRAM) { logger.info('Telegram disabled.'); return; }
 
-  const token = TELEGRAM_TOKEN;
+  const token = config.tgToken;
   if (!token || token === 'your-telegram-bot-token') {
-    logger.info('Telegram: no token set — skipping. Set TELEGRAM_BOT_TOKEN to enable.');
+    logger.info('Telegram: no token set — skipping.');
     return;
+  }
+
+  // If there's an existing bot, stop it
+  if (global.tgBot) {
+    try { await global.tgBot.stopPolling(); } catch(e){}
   }
 
   let TelegramBot;
@@ -228,6 +336,7 @@ async function startTelegram() {
     }
   });
 
+  global.tgBot = bot;
   logger.info('Telegram bot started (polling)');
 
   // ── Safe send helper — plain text only, no Markdown ─────────────────────────
@@ -267,13 +376,21 @@ async function startTelegram() {
       '/general - Force General Agent\n' +
       '/auto    - Auto-route (default)\n' +
       '/clear   - Clear your history\n' +
+      '/report  - File ClickUp issue\n' +
       '/start   - Welcome message\n\n' +
       'الاوامر:\n' +
       '/docs    - وكيل المستندات\n' +
       '/general - الوكيل العام\n' +
       '/auto    - توجيه تلقائي\n' +
-      '/clear   - مسح المحادثة'
+      '/clear   - مسح المحادثة\n' +
+      '/report  - إبلاغ عن مشكلة'
     );
+  });
+
+  bot.onText(/\/report (.+)/, async (msg, match) => {
+    const desc = match[1];
+    const task = await createClickUpTask(desc, `tg_${msg.chat.id}`);
+    send(msg.chat.id, task ? `Task created: ${task.url}` : 'Failed to create task.');
   });
 
   bot.onText(/\/docs/, msg => {

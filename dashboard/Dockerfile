@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
-# Install build tools for sqlite3
-RUN apk add --no-cache python3 make g++ 
+# Install build tools for sqlite3 and node-pty
+RUN apk add --no-cache python3 make g++ bash
 
 WORKDIR /app
 
