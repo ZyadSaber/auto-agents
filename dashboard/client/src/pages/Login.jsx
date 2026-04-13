@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
-import { Mail, Lock, LogIn, AlertCircle } from "lucide-react";
+import { User as UserIcon, Lock, LogIn, AlertCircle } from "lucide-react";
 
 function Login({ onLogin }) {
   const { t } = useTranslation();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,10 +15,10 @@ function Login({ onLogin }) {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.post("/api/auth/login", { email, password });
+      const response = await axios.post("/api/auth/login", { username, password });
       onLogin(response.data);
     } catch {
-      setError(t("invalid_credentials"));
+      setError(t("invalid_credentials") || "Invalid username or password");
     } finally {
       setLoading(false);
     }
@@ -51,17 +51,17 @@ function Login({ onLogin }) {
             )}
 
             <div className="flex flex-col space-y-1.5">
-              <label className="text-sm font-medium text-slate-300 ml-1">{t("email_label")}</label>
+              <label className="text-sm font-medium text-slate-300 ml-1">{t("username_label") || "Username"}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 pl-3 rtl:pr-3 rtl:pl-0 flex items-center pointer-events-none text-slate-500">
-                  <Mail size={18} />
+                  <UserIcon size={18} />
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   className="w-full glass-input rounded-lg pl-10 pr-4 rtl:pr-10 rtl:pl-4 py-2.5"
-                  placeholder="admin@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                 />
               </div>

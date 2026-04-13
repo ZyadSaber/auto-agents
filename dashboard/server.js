@@ -30,15 +30,15 @@ const initSuperAdmin = async () => {
   const count = adminCountQuery.get().count;
 
   if (count === 0) {
-    const email = process.env.INITIAL_ADMIN_EMAIL || "admin@company.com";
+    const username = process.env.INITIAL_ADMIN_USERNAME || "admin";
     const passwordText = process.env.INITIAL_ADMIN_PASSWORD || "changeme123";
     const hash = await bcrypt.hash(passwordText, 10);
 
     const insert = db.prepare(
-      "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
+      "INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)",
     );
-    insert.run("Super Admin", email, hash, "Super Admin");
-    console.log(`Created default Super Admin user: ${email}`);
+    insert.run("Super Admin", username, hash, "Super Admin");
+    console.log(`Created default Super Admin user: ${username}`);
   }
 };
 
@@ -69,13 +69,13 @@ const requireSuperAdmin = (req, res, next) => {
 
 // Auth Routes
 app.post("/api/auth/login", async (req, res) => {
-  const { email, password } = req.body;
-  const stmt = db.prepare("SELECT * FROM users WHERE email = ?");
-  const user = stmt.get(email);
+  const { username, password } = req.body;
+  const stmt = db.prepare("SELECT * FROM users WHERE username = ?");
+  const user = stmt.get(username);
 
   if (user && (await bcrypt.compare(password, user.password_hash))) {
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, name: user.name },
+      { id: user.id, username: user.username, role: user.role, name: user.name },
       JWT_SECRET,
       { expiresIn: "24h" },
     );
@@ -84,12 +84,12 @@ app.post("/api/auth/login", async (req, res) => {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email,
+        username: user.username,
         role: user.role,
       },
     });
   } else {
-    res.status(401).json({ error: "Invalid email or password" });
+    res.status(401).json({ error: "Invalid username or password" });
   }
 });
 
@@ -97,7 +97,7 @@ app.post("/api/auth/login", async (req, res) => {
 app.get("/api/users", authenticateToken, requireSuperAdmin, (req, res) => {
   const users = db
     .prepare(
-      "SELECT id, name, email, role, mobile_number, created_at FROM users",
+      "SELECT id, name, username, email, role, mobile_number, created_at FROM users",
     )
     .all();
   res.json(users);
