@@ -32,14 +32,13 @@ services:
     environment:
       # ── Keep models hot ───────────────────────────────────────
       - OLLAMA_KEEP_ALIVE=24h
-      # ── CPU thread count — use every core for inference ───────
-      - OLLAMA_NUM_THREAD=16
+      # ── CPU thread count — match host logical processors ──────
+      - OLLAMA_NUM_THREAD=8
       # ── Parallel inference sessions —————————————————————────
-      # 4 concurrent requests; each session shares all 16 threads.
-      # Lower values = lower latency per request on CPU.
-      - OLLAMA_NUM_PARALLEL=4
-      # ── Keep up to 3 models resident in RAM simultaneously ────
-      - OLLAMA_MAX_LOADED_MODELS=3
+      # Lower value ensures each session gets more compute
+      - OLLAMA_NUM_PARALLEL=2
+      # ── Keep up to 2 models resident in RAM simultaneously ────
+      - OLLAMA_MAX_LOADED_MODELS=2
       # ── Flash attention — reduces memory bandwidth pressure ───
       - OLLAMA_FLASH_ATTENTION=1
       # ── Large request queue so nothing is dropped under load ──
@@ -55,11 +54,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "14"
+          cpus: "15"
           memory: 110G
         reservations:
-          cpus: "8"
-          memory: 80G
+          cpus: "12"
+          memory: 64G
     # GPU: uncomment if you have NVIDIA GPU
     # deploy:
     #   resources:
@@ -137,7 +136,7 @@ services:
       - COLLECTION_NAME=customer_docs
       - SOLUTIONS_COLLECTION=known_solutions
       - EMBED_MODEL=nomic-embed-text
-      - CHAT_MODEL=${CHAT_MODEL:-aya-expanse:32b}
+      - CHAT_MODEL=${CHAT_MODEL:-aya-expanse:8b}
       - UPLOAD_DIR=/app/uploads
       - DB_PATH=/app/db/solutions.db
       - PORT=8100
@@ -236,6 +235,8 @@ services:
       - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD:-changeme123}
       - MONITOR_REFRESH_INTERVAL=${MONITOR_REFRESH_INTERVAL:-5000}
       - AGENT_API_KEY=${AGENT_API_KEY:-cs-internal-agent-key}
+      - ARABIC_MODEL=${ARABIC_MODEL:-qwen2.5:72b}
+      - ENGLISH_MODEL=${ENGLISH_MODEL:-llama3.3:70b}
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:3001/api/health || exit 1"]
       interval: 20s

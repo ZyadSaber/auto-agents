@@ -35,7 +35,9 @@ CHROMA_PORT     = int(os.getenv("CHROMA_PORT",      "8000"))
 COLLECTION_NAME = os.getenv("COLLECTION_NAME",      "customer_docs")
 SOL_COLLECTION  = os.getenv("SOLUTIONS_COLLECTION", "known_solutions")
 EMBED_MODEL     = os.getenv("EMBED_MODEL",          "nomic-embed-text")
-CHAT_MODEL      = os.getenv("CHAT_MODEL",           "aya-expanse:8b")
+CHAT_MODEL      = os.getenv("CHAT_MODEL",           "qwen2.5:72b")
+ARABIC_MODEL    = os.getenv("ARABIC_MODEL",    "qwen2.5:72b")
+ENGLISH_MODEL   = os.getenv("ENGLISH_MODEL",   "llama3.3:70b")
 UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR",      "/app/uploads"))
 DB_PATH         = Path(os.getenv("DB_PATH",         "/app/db/solutions.db"))
 PORT            = int(os.getenv("PORT",              "8100"))
@@ -272,6 +274,11 @@ RULES:
 أنت مساعد خدمة عملاء ثنائي اللغة. أجب بناءً على السياق المقدم فقط.
 """
 
+# ── Language Detection ────────────────────────────────────────────────────────
+def is_arabic(text: str) -> bool:
+    import re
+    return bool(re.search(r"[\u0600-\u06FF]", text))
+
 # ── RAG query ──────────────────────────────────────────────────────────────────
 def rag_query(question: str, session_id: str) -> dict:
     q_embed = embed([question])[0]
@@ -328,8 +335,15 @@ def rag_query(question: str, session_id: str) -> dict:
         messages.append({"role": row["role"], "content": row["content"]})
     messages.append({"role": "user", "content": f"Context:\n{full_context}\n\nQuestion: {question}"})
 
+    # Decide model based on language
+    if is_arabic(question):
+        selected_model = ARABIC_MODEL
+    else:
+        selected_model = ENGLISH_MODEL
+
     client = ollama_sdk.Client(host=OLLAMA_BASE_URL)
-    response = client.chat(model=CHAT_MODEL, messages=messages)
+    logger.info(f"[{session_id}] Routing to {selected_model}")
+    response = client.chat(model=selected_model, messages=messages)
     # ollama >= 0.3.x returns a typed ChatResponse object, not a dict
     answer = response.message.content
 

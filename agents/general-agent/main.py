@@ -25,7 +25,9 @@ import ollama as ollama_sdk
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
-CHAT_MODEL      = os.getenv("CHAT_MODEL",      "aya-expanse:8b")
+CHAT_MODEL      = os.getenv("CHAT_MODEL",      "qwen2.5:72b")
+ARABIC_MODEL    = os.getenv("ARABIC_MODEL",    "qwen2.5:72b")
+ENGLISH_MODEL   = os.getenv("ENGLISH_MODEL",   "llama3.3:70b")
 PORT            = int(os.getenv("PORT",         "8200"))
 API_KEY         = os.getenv("AGENT_API_KEY",   "cs-internal-agent-key")
 RATE_LIMIT_RPM  = int(os.getenv("RATE_LIMIT_RPM", "20"))
@@ -154,6 +156,12 @@ WINDOWS GENERAL:
 - Settings: Win + I
 """
 
+# ── Language Detection ────────────────────────────────────────────────────────
+def is_arabic(text: str) -> bool:
+    # Basic check for Arabic characters
+    import re
+    return bool(re.search(r"[\u0600-\u06FF]", text))
+
 # ── Chat function (per-user) ───────────────────────────────────────────────────
 def chat(question: str, session_id: str) -> str:
     # Load this user's history
@@ -170,8 +178,15 @@ def chat(question: str, session_id: str) -> str:
         messages.append({"role": row["role"], "content": row["content"]})
     messages.append({"role": "user", "content": question})
 
+    # Decide which model to use based on language
+    if is_arabic(question):
+        selected_model = ARABIC_MODEL
+    else:
+        selected_model = ENGLISH_MODEL
+
     client = ollama_sdk.Client(host=OLLAMA_BASE_URL)
-    response = client.chat(model=CHAT_MODEL, messages=messages)
+    logger.info(f"[{session_id}] Routing to {selected_model}")
+    response = client.chat(model=selected_model, messages=messages)
     # ollama >= 0.3.x returns a typed ChatResponse object, not a dict
     answer = response.message.content
 

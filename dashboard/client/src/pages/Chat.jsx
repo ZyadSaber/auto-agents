@@ -8,6 +8,7 @@ import {
   Settings2,
   Loader2,
   MessageSquare,
+  Square,
 } from "lucide-react";
 
 function Chat({ token }) {
@@ -18,15 +19,15 @@ function Chat({ token }) {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     axios
       .get("/api/models", { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         setModels(res.data.models || []);
-        if (res.data.models && res.data.models.length > 0) {
-          setSelectedModel(res.data.models[0].name);
-        }
+        // Default to "auto" to use the server-side language routing
+        setSelectedModel("auto");
       })
       .catch((err) => console.error("Could not load models", err));
   }, [token]);
@@ -46,6 +47,9 @@ function Chat({ token }) {
     setInput("");
     setIsStreaming(true);
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
@@ -60,6 +64,7 @@ function Chat({ token }) {
           messages: contextMessages.map(m => ({ role: m.role, content: m.content })),
           stream: true,
         }),
+        signal: controller.signal
       });
 
       if (!response.body) throw new Error("No response body");
@@ -97,16 +102,27 @@ function Chat({ token }) {
         }
       }
     } catch (err) {
-      console.error("Chat error:", err);
-      setMessages((prev) => {
-        const newArr = [...prev];
-        if (newArr[newArr.length - 1].content === "") {
-            newArr[newArr.length - 1].content = "⚠️ **Connection Error**: Could not reach Ollama API.";
-        }
-        return newArr;
-      });
+      if (err.name === 'AbortError') {
+        console.log("Stream aborted");
+      } else {
+        console.error("Chat error:", err);
+        setMessages((prev) => {
+          const newArr = [...prev];
+          if (newArr[newArr.length - 1].content === "") {
+              newArr[newArr.length - 1].content = "⚠️ **Connection Error**: Could not reach Ollama API.";
+          }
+          return newArr;
+        });
+      }
     } finally {
       setIsStreaming(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
   };
 
@@ -129,15 +145,12 @@ function Chat({ token }) {
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
             >
-              {models.length === 0 ? (
-                <option>{t("loading_models")}</option>
-              ) : (
-                models.map((m) => (
-                  <option key={m.name} value={m.name}>
-                    {m.name}
-                  </option>
-                ))
-              )}
+              <option value="auto">✨ {t("model_auto_routing") || "Smart Routing (Auto)"}</option>
+              {models.map((m) => (
+                <option key={m.name} value={m.name}>
+                  {m.name}
+                </option>
+              ))}
             </select>
             <div className="absolute inset-y-0 right-0 rtl:right-auto rtl:left-0 flex items-center pr-3 rtl:pl-3 pointer-events-none text-slate-500">
               <Bot size={16} />
@@ -224,21 +237,31 @@ function Chat({ token }) {
             <input
               type="text"
               className="w-full bg-slate-950/60 backdrop-blur-md border border-slate-700/60 rounded-full py-4 pl-6 pr-14 rtl:pr-6 rtl:pl-14 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/80 transition-all shadow-inner"
-              placeholder={t("ask_placeholder")}
+              placeholder={isStreaming ? t("typing") : t("ask_placeholder")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              onKeyDown={(e) => e.key === "Enter" && !isStreaming && handleSend()}
+              disabled={isStreaming}
             />
-            <button
-              className="absolute right-2 rtl:right-auto rtl:left-2 p-2.5 rounded-full bg-brand-500 hover:bg-brand-400 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-brand-500/20"
-              onClick={handleSend}
-              disabled={!input.trim()}
-            >
-              <Send
-                size={18}
-                className="rtl:rotate-180 transform -translate-x-px rtl:translate-x-px"
-              />
-            </button>
+            {isStreaming ? (
+              <button
+                className="absolute right-2 rtl:right-auto rtl:left-2 p-2.5 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 transition-colors shadow-md"
+                onClick={handleStop}
+              >
+                <Square size={18} fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                className="absolute right-2 rtl:right-auto rtl:left-2 p-2.5 rounded-full bg-brand-500 hover:bg-brand-400 text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-md shadow-brand-500/20"
+                onClick={handleSend}
+                disabled={!input.trim()}
+              >
+                <Send
+                  size={18}
+                  className="rtl:rotate-180 transform -translate-x-px rtl:translate-x-px"
+                />
+              </button>
+            )}
           </div>
           <div className="text-center mt-2">
             <span className="text-[10px] text-slate-500">

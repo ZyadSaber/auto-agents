@@ -118,14 +118,50 @@ app.get("/api/models", authenticateToken, async (req, res) => {
   }
 });
 
-// Proxy Chat Stream to Ollama
+// Helper to detect if a string is primarily Arabic
+const isArabic = (text) => {
+  const arabicPattern = /[\u0600-\u06FF]/;
+  return arabicPattern.test(text);
+};
+
+// Proxy Chat Stream to Ollama with Language Routing
 app.post("/api/chat", authenticateToken, async (req, res) => {
+  const abortController = new AbortController();
+  
+  // Choose model based on input language if not explicitly locked by the user
+  let targetModel = req.body.model;
+  const lastUserMessage = req.body.messages?.[req.body.messages.length - 1]?.content || "";
+  
+  if (isArabic(lastUserMessage)) {
+    // Priority: Qwen 2.5 (High Performance) -> Aya (Multilingual Specialist) -> Default
+    targetModel = process.env.ARABIC_MODEL || "qwen2.5:72b";
+  } else {
+    // Priority: Llama 3 (English Specialist) -> Default
+    targetModel = process.env.ENGLISH_MODEL || "llama3.3:70b";
+  }
+
+  // If user explicitly picked a model in the UI dropdown, we respect it
+  if (req.body.model && req.body.model !== "auto") {
+    targetModel = req.body.model;
+  }
+
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      abortController.abort();
+      console.log(`Client disconnected, aborting ${targetModel} request.`);
+    }
+  });
+
   try {
     const ollamaBase = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
     const response = await fetch(`${ollamaBase}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify({
+        ...req.body,
+        model: targetModel // Override with our routed model
+      }),
+      signal: abortController.signal
     });
 
     if (!response.ok) throw new Error(`Ollama Error: ${response.statusText}`);
@@ -137,8 +173,12 @@ app.post("/api/chat", authenticateToken, async (req, res) => {
       res.end();
     }
   } catch (err) {
-    console.error("Chat error:", err.message);
-    if (!res.headersSent) res.status(500).json({ error: "Ollama chat failed" });
+    if (err.name === 'AbortError') {
+      console.log("Ollama request was aborted.");
+    } else {
+      console.error("Chat error:", err.message);
+      if (!res.headersSent) res.status(500).json({ error: "Ollama chat failed" });
+    }
   }
 });
 
