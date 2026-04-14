@@ -323,22 +323,22 @@ app.get("/api/knowledge/solutions", authenticateToken, async (req, res) => {
 });
 
 // --- OpenClaw Proxy ---
-const OPENCLAW_URL = process.env.OPENCLAW_URL || "http://localhost:3100";
+const BRIDGE_URL = process.env.BRIDGE_URL || "http://localhost:3100";
 
-app.get("/api/openclaw/status", authenticateToken, async (req, res) => {
+app.get("/api/bridge/status", authenticateToken, async (req, res) => {
   try {
-    const response = await fetch(`${OPENCLAW_URL}/health`);
+    const response = await fetch(`${BRIDGE_URL}/health`);
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "OpenClaw service unreachable" });
+    res.status(500).json({ error: "Bridge service unreachable" });
   }
 });
 
-app.get("/api/openclaw/qr", authenticateToken, async (req, res) => {
+app.get("/api/bridge/qr", authenticateToken, async (req, res) => {
   try {
     // Return the HTML content of the QR page directly
-    const response = await fetch(`${OPENCLAW_URL}/qr`);
+    const response = await fetch(`${BRIDGE_URL}/qr`);
     const html = await response.text();
     res.send(html);
   } catch (err) {
@@ -346,9 +346,9 @@ app.get("/api/openclaw/qr", authenticateToken, async (req, res) => {
   }
 });
 
-app.post("/api/openclaw/whatsapp/reset", authenticateToken, requireSuperAdmin, async (req, res) => {
+app.post("/api/bridge/whatsapp/reset", authenticateToken, requireSuperAdmin, async (req, res) => {
   try {
-    const response = await fetch(`${OPENCLAW_URL}/api/whatsapp/reset`, {
+    const response = await fetch(`${BRIDGE_URL}/api/whatsapp/reset`, {
       method: "POST",
       headers: { "X-API-Key": AGENT_API_KEY }
     });
@@ -359,20 +359,54 @@ app.post("/api/openclaw/whatsapp/reset", authenticateToken, requireSuperAdmin, a
   }
 });
 
-app.post("/api/openclaw/config", authenticateToken, requireSuperAdmin, async (req, res) => {
+app.post("/api/bridge/config", authenticateToken, requireSuperAdmin, async (req, res) => {
   try {
-    const response = await fetch(`${OPENCLAW_URL}/api/config`, {
+    const response = await fetch(`${BRIDGE_URL}/api/config`, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
-        "X-API-Key": AGENT_API_KEY 
+        "X-API-Key": AGENT_API_KEY
       },
       body: JSON.stringify(req.body)
     });
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "Failed to update OpenClaw configuration" });
+    res.status(500).json({ error: "Failed to update bridge configuration" });
+  }
+});
+
+app.get("/api/bridge/stats", authenticateToken, async (req, res) => {
+  try {
+    const response = await fetch(`${BRIDGE_URL}/stats`);
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "Bridge stats unreachable" });
+  }
+});
+
+app.get("/api/bridge/logs", authenticateToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const response = await fetch(`${BRIDGE_URL}/api/logs`);
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "Bridge logs unreachable" });
+  }
+});
+
+app.post("/api/bridge/command", authenticateToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const response = await fetch(`${BRIDGE_URL}/api/commands`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-API-Key": AGENT_API_KEY },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to run bridge command" });
   }
 });
 
@@ -459,12 +493,19 @@ try {
   console.error("Failed to initialize PTY/WebSocket server:", err.message);
 }
 
-// Upgrade HTTP connection to WebSocket for terminal
+// Upgrade HTTP connection to WebSocket for terminal — JWT required
 server.on("upgrade", (request, socket, head) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
   if (url.pathname === "/terminal" && wss) {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit("connection", ws, request);
+    // Expect token in query param: ws://host/terminal?token=<jwt>
+    const token = url.searchParams.get("token");
+    if (!token) { socket.destroy(); return; }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+      if (err || user?.role !== "Super Admin") { socket.destroy(); return; }
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
     });
   } else {
     socket.destroy();
@@ -472,6 +513,15 @@ server.on("upgrade", (request, socket, head) => {
 });
 
 
+
+// Public branding config — safe to expose, no secrets
+app.get("/api/config/public", (req, res) => {
+  res.json({
+    systemName: process.env.SYSTEM_NAME || "AI Customer Service",
+    companyName: process.env.COMPANY_NAME || "",
+    tagline: process.env.SYSTEM_TAGLINE || "Powered by local AI",
+  });
+});
 
 // Health check
 app.get("/api/health", (req, res) => {

@@ -80,7 +80,7 @@ function OpenClawManager({ token, user }) {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await axios.get('/api/openclaw/status', { headers });
+      const res = await axios.get('/api/bridge/status', { headers });
       setStatus(res.data);
     } catch { /* service may be down */ }
     finally { setLoading(false); }
@@ -88,7 +88,7 @@ function OpenClawManager({ token, user }) {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await axios.get('/api/openclaw/stats', { headers });
+      const res = await axios.get('/api/bridge/stats', { headers });
       setStats(res.data);
     } catch { /* silent */ }
   }, [token]);
@@ -96,7 +96,7 @@ function OpenClawManager({ token, user }) {
   const fetchLogs = useCallback(async () => {
     setLogsLoading(true);
     try {
-      const res = await axios.get('/api/openclaw/logs', { headers });
+      const res = await axios.get('/api/bridge/logs', { headers });
       setLogs(res.data.logs || []);
     } catch { setCmdOutput(p => [...p, { ts: new Date().toISOString(), text: 'Could not fetch logs — check permissions.', ok: false }]); }
     finally { setLogsLoading(false); }
@@ -134,7 +134,7 @@ function OpenClawManager({ token, user }) {
   const handleResetWA = async () => {
     if (!window.confirm('Reset WhatsApp session? You will need to re-scan the QR code.')) return;
     try {
-      await axios.post('/api/openclaw/whatsapp/reset', {}, { headers });
+      await axios.post('/api/bridge/whatsapp/reset', {}, { headers });
       fetchStatus();
     } catch { alert('Failed to reset session'); }
   };
@@ -143,7 +143,7 @@ function OpenClawManager({ token, user }) {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.post('/api/openclaw/config', { tgToken, cuToken, cuTeam, cuList }, { headers });
+      await axios.post('/api/bridge/config', { tgToken, cuToken, cuTeam, cuList }, { headers });
       alert('Configuration saved!');
     } catch { alert('Failed to save configuration'); }
     finally { setSaving(false); }
@@ -154,7 +154,7 @@ function OpenClawManager({ token, user }) {
     setRunningCmd(command);
     setCmdOutput(p => [...p, { ts: new Date().toISOString(), text: `> ${label}`, ok: true, isCmd: true }]);
     try {
-      const res = await axios.post('/api/openclaw/command', { command }, { headers });
+      const res = await axios.post('/api/bridge/command', { command }, { headers });
       const lines = (res.data.message || '').split('\n');
       lines.forEach(line => setCmdOutput(p => [...p, { ts: new Date().toISOString(), text: line, ok: res.data.success }]));
       if (command === 'stats') fetchStats();
@@ -166,10 +166,10 @@ function OpenClawManager({ token, user }) {
 
   // ── tabs config ───────────────────────────────────────────────────────────
   const tabs = [
-    { id: 'status',  label: t('openclaw_status_tab'),   icon: ShieldCheck   },
-    { id: 'console', label: 'Console',                  icon: TerminalIcon  },
-    { id: 'history', label: t('openclaw_history_tab'),  icon: MessageSquare },
-    { id: 'config',  label: t('openclaw_config_tab'),   icon: Settings      },
+    { id: 'status',  label: t('bridge_status_tab'),   icon: ShieldCheck   },
+    { id: 'console', label: t('bridge_console_tab'),                  icon: TerminalIcon  },
+    { id: 'history', label: t('bridge_history_tab'),  icon: MessageSquare },
+    { id: 'config',  label: t('bridge_config_tab'),   icon: Settings      },
   ];
 
   // ── quick commands ────────────────────────────────────────────────────────
@@ -187,9 +187,9 @@ function OpenClawManager({ token, user }) {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <Webhook className="text-brand-400" />
-            {t('openclaw_title')}
+            {t('bridge_title')}
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">{t('openclaw_desc')}</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('bridge_desc')}</p>
         </div>
         <button onClick={() => { fetchStatus(); fetchStats(); }}
           className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors">
@@ -232,7 +232,7 @@ function OpenClawManager({ token, user }) {
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <LinkIcon className="text-[#25D366]" size={20} />
-                    {t('openclaw_wa_status')}
+                    {t('bridge_wa_status')}
                   </h3>
                   {status?.whatsapp?.ready ? (
                     <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full flex items-center gap-1 border border-emerald-500/20">
@@ -247,7 +247,7 @@ function OpenClawManager({ token, user }) {
 
                 {!status?.whatsapp?.ready && (
                   <div className="bg-white/5 rounded-xl p-4 border border-slate-700/50 aspect-square flex flex-col items-center justify-center relative overflow-hidden">
-                    <iframe src="/api/openclaw/qr" className="w-full h-full border-0 rounded-lg scale-[0.85] origin-top" title="WA QR" />
+                    <iframe src="/api/bridge/qr" className="w-full h-full border-0 rounded-lg scale-[0.85] origin-top" title="WA QR" />
                   </div>
                 )}
                 {status?.whatsapp?.ready && (
@@ -262,7 +262,7 @@ function OpenClawManager({ token, user }) {
                 {isSuperAdmin && (
                   <button onClick={handleResetWA}
                     className="w-full btn-secondary text-red-400 hover:text-red-300 hover:bg-red-500/10 mt-6 border-red-500/20">
-                    {t('openclaw_wa_reset_btn')}
+                    {t('bridge_wa_reset_btn')}
                   </button>
                 )}
               </div>
@@ -272,7 +272,7 @@ function OpenClawManager({ token, user }) {
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <MessageSquare className="text-[#0088cc]" size={20} />
-                    {t('openclaw_tg_status')}
+                    {t('bridge_tg_status')}
                   </h3>
                   {status?.telegram?.configured ? (
                     <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full flex items-center gap-1 border border-emerald-500/20">
@@ -429,7 +429,7 @@ function OpenClawManager({ token, user }) {
                   Bot Credentials
                 </h3>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">{t('openclaw_tg_token')}</label>
+                  <label className="block text-sm text-slate-400 mb-2">{t('bridge_tg_token')}</label>
                   <input type="password" value={tgToken} onChange={e => setTgToken(e.target.value)}
                     placeholder="123456:ABC-…" className="w-full glass-input p-3 rounded-xl text-sm" />
                 </div>
@@ -438,21 +438,21 @@ function OpenClawManager({ token, user }) {
               <section className="space-y-4">
                 <h3 className="text-white font-bold flex items-center gap-2">
                   <Ticket size={18} className="text-brand-400" />
-                  {t('openclaw_clickup_title')}
+                  {t('bridge_clickup_title')}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm text-slate-400 mb-2">{t('openclaw_clickup_token')}</label>
+                    <label className="block text-sm text-slate-400 mb-2">{t('bridge_clickup_token')}</label>
                     <input type="password" value={cuToken} onChange={e => setCuToken(e.target.value)}
                       placeholder="pk_…" className="w-full glass-input p-3 rounded-xl text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">{t('openclaw_clickup_team')}</label>
+                    <label className="block text-sm text-slate-400 mb-2">{t('bridge_clickup_team')}</label>
                     <input type="text" value={cuTeam} onChange={e => setCuTeam(e.target.value)}
                       placeholder="12345678" className="w-full glass-input p-3 rounded-xl text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">{t('openclaw_clickup_list')}</label>
+                    <label className="block text-sm text-slate-400 mb-2">{t('bridge_clickup_list')}</label>
                     <input type="text" value={cuList} onChange={e => setCuList(e.target.value)}
                       placeholder="987654321" className="w-full glass-input p-3 rounded-xl text-sm" />
                   </div>
@@ -462,7 +462,7 @@ function OpenClawManager({ token, user }) {
               <button type="submit" disabled={saving || !isSuperAdmin}
                 className="btn-primary px-8 py-3 flex items-center gap-2 disabled:opacity-50">
                 {saving ? <RefreshCw className="animate-spin" size={18} /> : <Settings size={18} />}
-                {t('openclaw_save_config')}
+                {t('bridge_save_config')}
               </button>
               {!isSuperAdmin && <p className="text-xs text-amber-400 mt-2">Super Admin role required to save config.</p>}
             </form>

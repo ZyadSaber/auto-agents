@@ -8,7 +8,7 @@ volumes:
   anythingllm-storage:
   docs-agent-db:
   general-agent-db:
-  openclaw-data:
+  bridge-data:
   dashboard-data:
 
 services:
@@ -224,7 +224,7 @@ services:
       - OLLAMA_BASE_URL=http://ollama:11434
       - DOCS_AGENT_URL=http://docs-agent:8100
       - GENERAL_AGENT_URL=http://general-agent:8200
-      - OPENCLAW_URL=http://openclaw:3100
+      - BRIDGE_URL=http://bridge:3100
       - CHROMADB_URL=http://chromadb:8000
       - JWT_SECRET=${JWT_SECRET:-cs-jwt-secret-change-in-production}
       - DB_PATH=/app/data/dashboard.db
@@ -237,6 +237,10 @@ services:
       - AGENT_API_KEY=${AGENT_API_KEY:-cs-internal-agent-key}
       - ARABIC_MODEL=${ARABIC_MODEL:-qwen2.5:72b}
       - ENGLISH_MODEL=${ENGLISH_MODEL:-llama3.3:70b}
+      # ── Branding (self-hosted customers can override these) ────
+      - SYSTEM_NAME=${SYSTEM_NAME:-AI Customer Service}
+      - COMPANY_NAME=${COMPANY_NAME:-}
+      - SYSTEM_TAGLINE=${SYSTEM_TAGLINE:-Powered by local AI}
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:3001/api/health || exit 1"]
       interval: 20s
@@ -245,18 +249,18 @@ services:
       start_period: 30s
 
   # ─────────────────────────────────────────────────────────────
-  # OPENCLAW — waits for both agents to be healthy
+  # BRIDGE (Channel Bridge) — WhatsApp + Telegram → AI agents
   # ─────────────────────────────────────────────────────────────
-  openclaw:
+  bridge:
     build:
-      context: ./openclaw
+      context: ./bridge
       dockerfile: Dockerfile
-    container_name: openclaw
+    container_name: bridge
     restart: unless-stopped
     ports:
       - "3100:3100"
     volumes:
-      - openclaw-data:/app/data
+      - bridge-data:/app/data
     networks:
       - ai-net
     depends_on:
@@ -301,7 +305,7 @@ services:
     depends_on:
       cs-dashboard:
         condition: service_healthy
-      openclaw:
+      bridge:
         condition: service_started
     deploy:
       resources:

@@ -1,25 +1,39 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-// Translations
 const resources = {
   en: {
     translation: {
-      "dashboard_title": "CS Dashboard",
+      // ── App-level (overridden at runtime by /api/config/public) ──────────
+      "app_name": "AI Customer Service",
+      "app_tagline": "Powered by local AI",
+
+      // ── Auth ─────────────────────────────────────────────────────────────
       "logout": "Logout",
-      "login_title": "CS Dashboard Login",
-      "email_label": "Email address",
+      "login_title": "Sign In",
+      "email_label": "Username",
       "password_label": "Password",
       "login_btn": "Log In",
+      "invalid_credentials": "Invalid credentials",
+
+      // ── Nav ──────────────────────────────────────────────────────────────
+      "nav_chat": "Chat",
+      "nav_documents": "Documents",
+      "nav_knowledge": "Knowledge Base",
+      "nav_channels": "Channels",
+      "nav_llm": "LLM Manager",
+      "nav_monitoring": "Monitoring",
+      "nav_settings": "Settings",
+      "nav_terminal": "Server Terminal",
+
+      // ── Chat ─────────────────────────────────────────────────────────────
       "chat_title": "Chat Interface",
       "loading_models": "Loading models...",
       "start_conversation": "Start a conversation...",
       "ask_placeholder": "Ask a question...",
       "send_btn": "Send",
-      "invalid_credentials": "Invalid credentials",
-      "language": "Language",
-      "english": "English",
-      "arabic": "عربي",
+
+      // ── LLM Manager ──────────────────────────────────────────────────────
       "llm_manager_title": "LLM Manager",
       "llm_manager_desc": "Manage, monitor, and pull local Ollama models.",
       "llm_installed_tab": "Installed Server Models",
@@ -38,6 +52,8 @@ const resources = {
       "llm_pull_placeholder": "e.g. llama3, mistral, aya-expanse:32b",
       "llm_pull_button": "Pull Model",
       "llm_recommended": "Recommended Models for CS",
+
+      // ── Documents ────────────────────────────────────────────────────────
       "docs_title": "Documents Manager",
       "docs_desc": "Upload and manage documents for RAG (Retrieval-Augmented Generation).",
       "docs_upload_btn": "Upload Document",
@@ -45,6 +61,8 @@ const resources = {
       "docs_table_chunks": "Chunks",
       "docs_table_date": "Ingested At",
       "docs_no_files": "No documents ingested yet.",
+
+      // ── Knowledge Base ───────────────────────────────────────────────────
       "kb_title": "Knowledge Base",
       "kb_desc": "Manually teach the AI specific problem-solution rules.",
       "kb_add_solution": "Add New Rule",
@@ -55,48 +73,68 @@ const resources = {
       "kb_table_problem": "Problem",
       "kb_table_solution": "Solution",
       "kb_no_solutions": "No learned solutions yet.",
-      "openclaw_title": "OpenClaw Manager",
-      "openclaw_desc": "Control WhatsApp, Telegram, and ClickUp integration.",
-      "openclaw_status_tab": "Status",
-      "openclaw_config_tab": "Configuration",
-      "openclaw_terminal_tab": "Interactive Terminal",
-      "openclaw_history_tab": "Live Conversations",
-      "openclaw_terminal_caution": "⚠️ CAUTION: This interactive terminal provides full shell access to the server environment. Ensure only authorized personnel use this feature.",
-      "openclaw_wa_status": "WhatsApp Status",
-      "openclaw_tg_status": "Telegram Status",
-      "openclaw_wa_reset_btn": "Reset WhatsApp Session",
-      "openclaw_clickup_title": "ClickUp Integration",
-      "openclaw_clickup_token": "API Token",
-      "openclaw_clickup_team": "Team ID (Workspace)",
-      "openclaw_clickup_list": "List ID",
-      "openclaw_save_config": "Save Settings",
-      "openclaw_reconnecting": "Reconnecting bots...",
-      "openclaw_tg_token": "Telegram Bot Token"
+
+      // ── Channel Bridge (was OpenClaw) ─────────────────────────────────────
+      "bridge_title": "Channel Bridge",
+      "bridge_desc": "Manage WhatsApp, Telegram, and ClickUp integrations.",
+      "bridge_status_tab": "Status",
+      "bridge_config_tab": "Configuration",
+      "bridge_history_tab": "Live Conversations",
+      "bridge_console_tab": "Console",
+      "bridge_wa_status": "WhatsApp Status",
+      "bridge_tg_status": "Telegram Status",
+      "bridge_wa_reset_btn": "Reset WhatsApp Session",
+      "bridge_clickup_title": "ClickUp Integration",
+      "bridge_clickup_token": "API Token",
+      "bridge_clickup_team": "Team ID (Workspace)",
+      "bridge_clickup_list": "List ID",
+      "bridge_save_config": "Save Settings",
+      "bridge_tg_token": "Telegram Bot Token",
+
+      // ── Terminal ─────────────────────────────────────────────────────────
+      "terminal_title": "Server Terminal",
+      "terminal_desc": "Direct shell access to the server. Super Admin only.",
+      "terminal_warning": "This terminal provides full shell access to the server. Every command runs directly on the host. Use with extreme caution.",
     }
   },
   ar: {
     translation: {
-      "dashboard_title": "لوحة تحكم خدمة العملاء",
+      // ── App-level ────────────────────────────────────────────────────────
+      "app_name": "خدمة العملاء بالذكاء الاصطناعي",
+      "app_tagline": "مدعوم بالذكاء الاصطناعي المحلي",
+
+      // ── Auth ─────────────────────────────────────────────────────────────
       "logout": "تسجيل خروج",
       "login_title": "تسجيل الدخول",
-      "email_label": "البريد الإلكتروني",
+      "email_label": "اسم المستخدم",
       "password_label": "كلمة المرور",
-      "login_btn": "تسجيل الدخول",
+      "login_btn": "دخول",
+      "invalid_credentials": "بيانات الدخول غير صحيحة",
+
+      // ── Nav ──────────────────────────────────────────────────────────────
+      "nav_chat": "المحادثة",
+      "nav_documents": "المستندات",
+      "nav_knowledge": "قاعدة المعرفة",
+      "nav_channels": "القنوات",
+      "nav_llm": "إدارة النماذج",
+      "nav_monitoring": "المراقبة",
+      "nav_settings": "الإعدادات",
+      "nav_terminal": "سطر الأوامر",
+
+      // ── Chat ─────────────────────────────────────────────────────────────
       "chat_title": "واجهة المحادثة",
       "loading_models": "جاري تحميل النماذج...",
       "start_conversation": "ابدأ محادثة...",
       "ask_placeholder": "اسأل سؤالاً...",
       "send_btn": "إرسال",
-      "invalid_credentials": "بيانات الدخول غير صحيحة",
-      "language": "اللغة",
-      "english": "English",
-      "arabic": "عربي",
+
+      // ── LLM Manager ──────────────────────────────────────────────────────
       "llm_manager_title": "إدارة النماذج (LLM)",
       "llm_manager_desc": "إدارة، مراقبة، وتنزيل نماذج Ollama المحلية.",
       "llm_installed_tab": "النماذج المثبتة",
-      "llm_running_tab": "النماذج قيد التشغيل (VRAM)",
+      "llm_running_tab": "النماذج قيد التشغيل",
       "llm_pull_tab": "تنزيل نماذج جديدة",
-      "llm_no_installed": "لا توجد نماذج مثبتة. اذهب إلى نافذة التنزيل لجلب واحد.",
+      "llm_no_installed": "لا توجد نماذج مثبتة.",
       "llm_size": "الحجم",
       "llm_family": "العائلة",
       "llm_parameters": "المُعلمات",
@@ -109,40 +147,49 @@ const resources = {
       "llm_pull_placeholder": "مثال: llama3, mistral, aya-expanse:32b",
       "llm_pull_button": "تنزيل النموذج",
       "llm_recommended": "نماذج مقترحة لخدمة العملاء",
+
+      // ── Documents ────────────────────────────────────────────────────────
       "docs_title": "إدارة المستندات",
-      "docs_desc": "رفع وإدارة المستندات لاستخدامها في توليد الإجابات المعززة بالاسترجاع (RAG).",
+      "docs_desc": "رفع وإدارة المستندات لاستخدامها في توليد الإجابات المعززة (RAG).",
       "docs_upload_btn": "رفع مستند",
       "docs_table_name": "اسم الملف",
       "docs_table_chunks": "عدد الأجزاء",
       "docs_table_date": "تاريخ المعالجة",
       "docs_no_files": "لا توجد مستندات معالجة بعد.",
+
+      // ── Knowledge Base ───────────────────────────────────────────────────
       "kb_title": "قاعدة المعرفة",
-      "kb_desc": "تعليم الذكاء الاصطناعي يدوياً قواعد (المشكلة-الحل) المحددة.",
+      "kb_desc": "تعليم الذكاء الاصطناعي يدوياً قواعد المشكلة-الحل.",
       "kb_add_solution": "إضافة قاعدة جديدة",
       "kb_problem_label": "المشكلة / السؤال",
-      "kb_solution_label": "الحل المستهدف / الإجابة",
+      "kb_solution_label": "الحل المستهدف",
       "kb_lang_label": "اللغة",
       "kb_save_btn": "حفظ القاعدة",
       "kb_table_problem": "المشكلة",
       "kb_table_solution": "الحل",
       "kb_no_solutions": "لا توجد حلول متعلمة بعد.",
-      "openclaw_title": "مدير OpenClaw",
-      "openclaw_desc": "التحكم في واتساب، تيليجرام، وتكامل ClickUp.",
-      "openclaw_status_tab": "الحالة",
-      "openclaw_config_tab": "الإعدادات",
-      "openclaw_terminal_tab": "المحطة الطرفية (Terminal)",
-      "openclaw_history_tab": "المحادثات المباشرة",
-      "openclaw_terminal_caution": "⚠️ تنبيه: توفر هذه المحطة الطرفية وصولاً كاملاً إلى نظام الخادم. يرجى التأكد من استخدامها من قبل الموظفين المصرح لهم فقط.",
-      "openclaw_wa_status": "حالة واتساب",
-      "openclaw_tg_status": "حالة تيليجرام",
-      "openclaw_wa_reset_btn": "إعادة ضبط جلسة واتساب",
-      "openclaw_clickup_title": "تكامل ClickUp",
-      "openclaw_clickup_token": "مفتاح API",
-      "openclaw_clickup_team": "رقم الفريق (Team ID)",
-      "openclaw_clickup_list": "رقم القائمة (List ID)",
-      "openclaw_save_config": "حفظ الإعدادات",
-      "openclaw_reconnecting": "جاري إعادة تشغيل الروبوتات...",
-      "openclaw_tg_token": "مفتاح تيليجرام بوت"
+
+      // ── Channel Bridge ────────────────────────────────────────────────────
+      "bridge_title": "جسر القنوات",
+      "bridge_desc": "إدارة تكامل واتساب، تيليجرام، وClickUp.",
+      "bridge_status_tab": "الحالة",
+      "bridge_config_tab": "الإعدادات",
+      "bridge_history_tab": "المحادثات المباشرة",
+      "bridge_console_tab": "وحدة التحكم",
+      "bridge_wa_status": "حالة واتساب",
+      "bridge_tg_status": "حالة تيليجرام",
+      "bridge_wa_reset_btn": "إعادة ضبط جلسة واتساب",
+      "bridge_clickup_title": "تكامل ClickUp",
+      "bridge_clickup_token": "مفتاح API",
+      "bridge_clickup_team": "رقم الفريق",
+      "bridge_clickup_list": "رقم القائمة",
+      "bridge_save_config": "حفظ الإعدادات",
+      "bridge_tg_token": "مفتاح بوت تيليجرام",
+
+      // ── Terminal ─────────────────────────────────────────────────────────
+      "terminal_title": "سطر أوامر الخادم",
+      "terminal_desc": "وصول مباشر إلى سطر أوامر الخادم. للمسؤول العام فقط.",
+      "terminal_warning": "يوفر هذا الطرفية وصولاً كاملاً إلى الخادم. استخدم بحذر شديد.",
     }
   }
 };
@@ -151,11 +198,9 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'en', // default language
+    lng: 'en',
     fallbackLng: 'en',
-    interpolation: {
-      escapeValue: false // react already safes from xss
-    }
+    interpolation: { escapeValue: false }
   });
 
 export default i18n;
