@@ -30,7 +30,10 @@ ARABIC_MODEL    = os.getenv("ARABIC_MODEL",    "qwen2.5:72b")
 ENGLISH_MODEL   = os.getenv("ENGLISH_MODEL",   "llama3.3:70b")
 PORT            = int(os.getenv("PORT",         "8200"))
 API_KEY         = os.getenv("AGENT_API_KEY",   "cs-internal-agent-key")
+if not os.getenv("AGENT_API_KEY"):
+    import warnings; warnings.warn("AGENT_API_KEY is not set — using insecure default. Set it in .env before deployment.", stacklevel=1)
 RATE_LIMIT_RPM  = int(os.getenv("RATE_LIMIT_RPM", "20"))
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1,http://10.0.0.11").split(",") if o.strip()]
 DB_PATH         = Path(os.getenv("DB_PATH",    "/app/db/general_history.db"))
 
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -60,6 +63,8 @@ def check_rate_limit(identifier: str):
 def get_db() -> sqlite3.Connection:
     con = sqlite3.connect(str(DB_PATH), check_same_thread=False)
     con.row_factory = sqlite3.Row
+    con.execute("PRAGMA journal_mode=WAL")   # concurrent reads don't block writes
+    con.execute("PRAGMA busy_timeout=5000")  # wait up to 5s instead of failing instantly
     return con
 
 def init_db():
@@ -214,22 +219,37 @@ def chat(question: str, session_id: str) -> str:
     return answer
 
 # ── App ────────────────────────────────────────────────────────────────────────
+def validate_ollama_models():
+    """Exit with a clear error if required models are missing from Ollama."""
+    try:
+        client = ollama_sdk.Client(host=OLLAMA_BASE_URL)
+        available = {m["model"] for m in client.list().get("models", [])}
+        missing = [m for m in (ARABIC_MODEL, ENGLISH_MODEL) if m not in available]
+        if missing:
+            logger.error(
+                f"Required Ollama models not found: {missing}. "
+                f"Available: {sorted(available) or 'none'}. "
+                "Run `ollama pull <model>` and restart."
+            )
+            raise SystemExit(1)
+        logger.success(f"Ollama models OK: {ARABIC_MODEL}, {ENGLISH_MODEL}")
+    except SystemExit:
+        raise
+    except Exception as e:
+        logger.warning(f"Ollama not reachable at startup: {e}. Continuing anyway.")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"General Agent starting. Model: {CHAT_MODEL}")
     init_db()
-    try:
-        ollama_sdk.Client(host=OLLAMA_BASE_URL).list()
-        logger.success("Ollama connection OK.")
-    except Exception as e:
-        logger.warning(f"Ollama not yet ready: {e}")
+    validate_ollama_models()
     yield
 
 app = FastAPI(title="General Agent", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )

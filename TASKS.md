@@ -1,6 +1,6 @@
 # AI Customer Service — Project Tasks & Roadmap
 
-> Last updated: 2026-04-14  
+> Last updated: 2026-04-15  
 > Owner: Zyad Ahmed  
 > Goal: Deploy internally at company first → validate → launch as startup product
 
@@ -55,11 +55,11 @@
 
 | # | Task | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 2.1 | Restrict CORS `allow_origins` to dashboard URL only | 🔴 | ⬜ Pending | `docs-agent/main.py` + `general-agent/main.py` — replace `["*"]` with env var list |
-| 2.2 | Add JWT auth check to WebSocket `/terminal` upgrade handler | 🔴 | ⬜ Pending | `dashboard/server.js` — parse token from WS query param, require Super Admin |
-| 2.3 | Sanitize file upload filenames | 🟠 | ⬜ Pending | `docs-agent/main.py` — strip path separators, validate extension whitelist |
-| 2.4 | Sanitize ClickUp description input | 🟠 | ⬜ Pending | `openclaw/index.js` — strip HTML/script tags before sending to ClickUp API |
-| 2.5 | Add model existence validation on agent startup | 🟠 | ⬜ Pending | Both agents — query Ollama `/api/tags` on boot, exit with clear error if model missing |
+| 2.1 | Restrict CORS `allow_origins` to dashboard URL only | 🔴 | ✅ Done | All 3 services — `ALLOWED_ORIGINS` env var, comma-separated, defaults to `http://127.0.0.1,http://10.0.0.11` |
+| 2.2 | Add JWT auth check to WebSocket `/terminal` upgrade handler | 🔴 | ✅ Done | Completed in Phase 0 (task 0.6) — `server.js` parses `?token=<jwt>`, requires Super Admin |
+| 2.3 | Sanitize file upload filenames | 🟠 | ✅ Done | `docs-agent/main.py` — strips directory components, validates path stays inside `UPLOAD_DIR` |
+| 2.4 | Sanitize ClickUp description input | 🟠 | ✅ Done | `openclaw/index.js` + `bridge/index.js` — `sanitizeText()` strips HTML, escapes entities, caps at 10k chars |
+| 2.5 | Add model existence validation on agent startup | 🟠 | ✅ Done | `validate_ollama_models()` added to both agents — queries Ollama `/api/tags`, exits with clear error if model missing |
 | 2.6 | Add rate limiting to dashboard Express routes | 🟡 | ⬜ Pending | Install `express-rate-limit`, apply to `/api/chat` and `/api/docs` |
 | 2.7 | Move secrets out of docker-compose into `.env` file (git-ignored) | 🟠 | ⬜ Pending | `AGENT_API_KEY`, `JWT_SECRET`, `TELEGRAM_BOT_TOKEN` — never commit `.env` |
 
@@ -104,7 +104,8 @@
 | 5.5 | Role-based document access (staff sees only their dept docs) | 🟡 | ⬜ Pending | Tag docs with department label |
 | 5.6 | Admin bulk operations (delete all sessions, re-embed all docs) | 🟡 | ⬜ Pending | |
 | 5.7 | API key management UI (generate/revoke agent keys from dashboard) | 🔵 | ⬜ Pending | |
-| 5.8 | Complete Second Telegram bot (currently unfinished dead code) | 🟡 | ⬜ Pending | Either finish or remove from `openclaw/index.js` |
+| 5.8 | Build Bot 1 (internal staff bot) — proactive push to `INTERNAL_CHANNEL_ID` when new problem arrives or AI finds a solution; commands: `/stats`, `/pending` | 🟠 | ⬜ Pending | Token: `TELEGRAM_BOT_TOKEN` → `config.tgToken`; channel: `INTERNAL_CHANNEL_ID` → `config.internalChannelId`; push triggered from `queryAgent()` and ClickUp escalation path |
+| 5.9 | Build Bot 2 (customer-facing bot) — receive customer messages, hit AI agent for solution, escalate to ClickUp if no solution found, notify customer of escalation | 🟠 | ⬜ Pending | Token: `SECOND_TELEGRAM_BOT_TOKEN` → `config.secondTgToken`; single tenant for now (multi-tenant deferred to 6.1); rewrite `startSecondTelegram()` in `openclaw/index.js` + `bridge/index.js` |
 
 ---
 
@@ -121,7 +122,19 @@
 | 6.7 | CI/CD pipeline (GitHub Actions — test → build → deploy) | 🟠 | ⬜ Pending | |
 | 6.8 | Automated test suite (unit + integration + E2E) | 🟠 | ⬜ Pending | Zero tests currently exist |
 | 6.9 | Migrate backend to TypeScript | 🔵 | ⬜ Pending | Optional but helps at scale |
-| 6.10 | Replace `whatsapp-web.js` with Meta WhatsApp Cloud API | 🔴 | ⬜ Pending | **Pre-production gate** — unofficial Baileys/QR carries ban risk at scale; Meta Cloud API is free for first 1k conversations/month, webhook-based, ~50 lines changed in `openclaw/index.js` only |
+| 6.10 | Replace `whatsapp-web.js` with Meta WhatsApp Cloud API | 🔴 | ⬜ Pending | **Pre-production gate** — unofficial Baileys/QR carries ban risk at scale; Meta Cloud API is free for first 1k conversations/month, webhook-based, ~50 lines changed in `bridge/index.js` only |
+
+---
+
+## Phase 7 — Brain Ideas on the Go
+
+> Raw ideas captured during development. No commitment — revisit when relevant.
+
+| # | Idea | Notes |
+|---|------|-------|
+| 7.1 | First-run setup wizard (auto-configure `.env` via UI) | On first boot with no `.env`, show a setup page: enter server IP, JWT secret, bot tokens, ClickUp keys → generates and writes `.env` automatically. Removes manual setup friction for self-hosted deployments. |
+| 7.2 | Auto-detect server IP on first run | During setup wizard, detect LAN IP and pre-fill `ALLOWED_ORIGINS` and branding fields. User just confirms and hits save. |
+| 7.3 | Health dashboard "onboarding checklist" | After setup wizard, show a checklist: Ollama connected ✅, models pulled ✅, Telegram token set ✅, etc. Green = ready to use. |
 
 ---
 
@@ -130,10 +143,23 @@
 | # | Bug | File | Severity |
 |---|-----|------|----------|
 | B1 | ~~NavLink className broken for LLM Manager (escaped backtick)~~ | `App.jsx:163` | ✅ Fixed |
-| B2 | `TELEGRAM_TOKEN` referenced before declaration in `/health` route | `openclaw/index.js:180` | 🟠 High — crashes on startup if `ENABLE_TELEGRAM=true` but var is declared later |
-| B3 | ChromaDB only health-checked once at startup | `docs-agent/main.py:93` | 🟡 Medium |
-| B4 | No model validation on startup — silent fail if model missing | Both agents | 🟠 High |
-| B5 | `WhatsApp client.on('disconnected')` does not auto-reconnect | `openclaw/index.js` | 🟡 Medium |
+| B2 | ~~`TELEGRAM_TOKEN` referenced before declaration in `/health` — crashes if `ENABLE_TELEGRAM=true`~~ | `openclaw/index.js:209`, `bridge/index.js:209` | ✅ Fixed — uses `config.tgToken` |
+| B3 | ~~ChromaDB only health-checked once at startup~~ | `docs-agent/main.py:93` | ✅ Fixed — `chroma_health_loop()` runs every 60s as async background task |
+| B4 | ~~No model validation on startup — silent fail if model missing~~ | Both agents | ✅ Fixed — `validate_ollama_models()` added; exits with clear error if models missing |
+| B5 | ~~`WhatsApp client.on('disconnected')` does not auto-reconnect~~ | `openclaw/index.js`, `bridge/index.js` | ✅ Fixed — exponential backoff retry (2s→4s→8s…cap 60s), calls `startWhatsApp()` |
+| B6 | ~~`SECOND_TELEGRAM_TOKEN` undefined in `startSecondTelegram()`~~ | `openclaw/index.js:563`, `bridge/index.js:563` | ✅ Fixed — uses `config.secondTgToken` |
+| B7 | ~~DB initialized with `verbose: console.log` — all SQL queries logged to stdout~~ | `dashboard/database.js:13` | ✅ Fixed — only logs if `DEBUG_SQL=true` env var is set |
+| B8 | ~~`check_same_thread=False` in SQLite with no mutex — race condition under concurrent requests~~ | `docs-agent/main.py`, `general-agent/main.py` | ✅ Fixed — WAL journal mode + 5s busy timeout added to every connection |
+| B9 | Dead code: Second Telegram bot — replaced by tasks 5.8 and 5.9 | `openclaw/index.js`, `bridge/index.js` | ✅ Closed — tracked as features |
+| S1 | ~~CORS `allow_origins=["*"]` on all services~~ | `docs-agent/main.py`, `general-agent/main.py`, `dashboard/server.js` | ✅ Fixed — `ALLOWED_ORIGINS` env var, defaults to `http://127.0.0.1,http://10.0.0.11` |
+| S2 | ~~ClickUp task description sent unsanitized — HTML/script injection possible~~ | `openclaw/index.js`, `bridge/index.js` | ✅ Fixed — `sanitizeText()` strips HTML tags, escapes entities, caps at 10k chars |
+| S3 | ~~`JWT_SECRET` had weak hardcoded default, not enforced~~ | `dashboard/server.js:18` | ✅ Fixed — exits on startup if not set |
+| S4 | ~~`AGENT_API_KEY` defaulted to weak value with no warning~~ | 5 files | ✅ Fixed — startup warning logged if using default |
+| S5 | ~~File upload filename not sanitized — path traversal risk~~ | `docs-agent/main.py:434` | ✅ Fixed — strips directory components, validates resolved path stays inside `UPLOAD_DIR` |
+| E1 | ~~Silent catches in proxy routes — errors swallowed, impossible to debug~~ | `dashboard/server.js` | ✅ Fixed — `proxyError()` helper logs all errors server-side across all proxy routes |
+| E2 | ~~`startTelegram()` called without `await` — errors silently lost~~ | `bridge/index.js:336` | ✅ Fixed — `.catch()` added, errors now logged |
+| V2 | ~~`/api/chat` accepts any model name without validating against Ollama~~ | `dashboard/server.js` | ✅ Fixed — validates against `/api/tags` before accepting user-picked model |
+| C1 | ~~`stats` counters incremented from concurrent handlers — inaccurate at load~~ | `bridge/index.js` | ✅ Fixed — `inc()` helper centralises all increments |
 
 ---
 
@@ -171,3 +197,12 @@ Nginx :80
 | 2026-04-14 | App branding driven by `SYSTEM_NAME` env var | Self-hosted customers set their own name; changes `document.title` + nav header dynamically |
 | 2026-04-14 | Terminal WebSocket now requires JWT Super Admin token | Security hardening — previous version was completely open |
 | 2026-04-14 | Do NOT switch to openclaw.ai product | openclaw.ai is a personal AI assistant platform, not a WA gateway — it uses the same Baileys/QR method underneath and would require replacing the entire AI backend |
+| 2026-04-15 | `config` object is single source of truth for runtime secrets | Secrets seed from `.env` on startup, can be updated live via `POST /api/config` without restart — `tgToken`, `secondTgToken`, `internalChannelId`, ClickUp keys all follow this pattern |
+| 2026-04-15 | Never edit `.env` directly — only `.env.example` | `.env` contains real secrets and must not be touched; `.env.example` is the template with placeholder values |
+| 2026-04-15 | `JWT_SECRET` is now required (hard exit if missing) | Weak hardcoded default was a security risk — dashboard process exits on startup if env var not set |
+| 2026-04-15 | `AGENT_API_KEY` warns but does not exit if using default | Internal service traffic — warning is enough to alert on first boot; crash would break local dev with no `.env` |
+| 2026-04-15 | Two separate Telegram bots with distinct roles | Bot 1 (`TELEGRAM_BOT_TOKEN`) = internal staff bot, proactive push to `INTERNAL_CHANNEL_ID` when problems/solutions occur + staff commands; Bot 2 (`SECOND_TELEGRAM_BOT_TOKEN`) = customer-facing, AI agent lookup → ClickUp escalation if no solution |
+| 2026-04-15 | Bot 2 is single-tenant for now | No multi-tenant isolation until a second real client exists — premature design; deferred to task 6.1 |
+| 2026-04-15 | Bot 2 escalation path: AI agent → ClickUp | If AI cannot resolve customer issue, create ClickUp task for company team and notify customer of escalation — no other ticketing system needed |
+| 2026-04-15 | Bot 1 uses proactive push (not command-only) | Staff should be notified automatically when events happen — commands (`/stats`, `/pending`) are a bonus, not the core value |
+| 2026-04-15 | Model validation exits hard if models missing | Silent failure when a model is missing caused confusing UX — better to fail fast at startup with a clear message listing what to `ollama pull` |

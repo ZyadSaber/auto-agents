@@ -10,12 +10,12 @@
       "Bash(npm run:*)",
       "Bash(nvm ls:*)",
       "Bash(where node:*)",
-      "Bash(cp:*)",
       "Bash(node server.js)",
       "Bash(curl -s http://localhost:3001/api/health)",
       "Bash(pkill -f \"node server.js\")",
       "Bash(taskkill /F /IM node.exe)",
-      "Bash(taskkill //F //IM node.exe)"
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(python3:*)"
     ]
   }
 }

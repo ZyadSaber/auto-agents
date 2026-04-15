@@ -37,6 +37,8 @@ const stats = {
   clickup:  { created: 0, failed: 0 },
   sessions: new Set(),
 };
+// Atomic-safe increment — prevents read-modify-write races across async handlers
+const inc = (obj, key) => { obj[key] = (obj[key] || 0) + 1; };
 const logBuffer = []; // last 200 lines
 const MAX_LOG_LINES = 200;
 
@@ -59,15 +61,18 @@ const PORT              = process.env.PORT              || 3100;
 const DOCS_AGENT_URL    = process.env.DOCS_AGENT_URL    || 'http://docs-agent:8100';
 const GENERAL_AGENT_URL = process.env.GENERAL_AGENT_URL || 'http://general-agent:8200';
 const AGENT_API_KEY     = process.env.AGENT_API_KEY     || 'cs-internal-agent-key';
+if (!process.env.AGENT_API_KEY) logger.warn('AGENT_API_KEY is not set — using insecure default. Set it in .env before deployment.');
 const ENABLE_WHATSAPP   = process.env.ENABLE_WHATSAPP   !== 'false';
 const ENABLE_TELEGRAM   = process.env.ENABLE_TELEGRAM   !== 'false';
 const ENABLE_SECOND_TELEGRAM = process.env.ENABLE_SECOND_TELEGRAM === 'true';
 const SESSION_DIR       = process.env.SESSION_DIR || '/app/data/whatsapp-session';
-const CONFIG_PATH       = process.env.CONFIG_PATH  || '/app/data/openclaw_config.json';
+const CONFIG_PATH       = process.env.CONFIG_PATH  || '/app/data/bridge_config.json';
 
 // --- Global Config Load/Save ---
 let config = {
-  tgToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  tgToken:          process.env.TELEGRAM_BOT_TOKEN        || '',  // Bot 1 — internal staff
+  secondTgToken:    process.env.SECOND_TELEGRAM_BOT_TOKEN || '',  // Bot 2 — customer-facing
+  internalChannelId: process.env.INTERNAL_CHANNEL_ID      || '',  // Bot 1 proactive push target
   cuToken: process.env.CLICKUP_API_KEY || '',
   cuTeam:  process.env.CLICKUP_TEAM_ID  || '',
   cuList:  process.env.CLICKUP_LIST_ID  || '',
@@ -145,7 +150,7 @@ async function queryAgent(message, sessionId) {
     return answer;
 
   } catch (err) {
-    stats.errors.agent++;
+    inc(stats.errors, 'agent');
     const status = err.response?.status;
     if (status === 429) {
       return 'Too many messages. Please wait a minute.\nرسائل كثيرة جداً. يرجى الانتظار دقيقة.';
@@ -169,6 +174,14 @@ async function clearUserHistory(sessionId) {
   logger.info(`Cleared history: ${sessionId}`);
 }
 
+function sanitizeText(str) {
+  return String(str)
+    .replace(/<[^>]*>/g, '')      // strip HTML tags
+    .replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]))
+    .trim()
+    .slice(0, 10000);             // hard cap — ClickUp description limit
+}
+
 // ── ClickUp Integration ───────────────────────────────────────────────────────
 async function createClickUpTask(description, customerSession) {
   if (!config.cuToken || !config.cuList) {
@@ -179,18 +192,18 @@ async function createClickUpTask(description, customerSession) {
     const url = `https://api.clickup.com/api/v2/list/${config.cuList}/task`;
     const res = await axios.post(url, {
       name: `Report from ${customerSession}`,
-      description: description,
+      description: sanitizeText(description),
       status: "to do",
       priority: 3,
       tags: ["ai-report", customerSession.startsWith('wa') ? "whatsapp" : "telegram"]
     }, {
       headers: { 'Authorization': config.cuToken }
     });
-    stats.clickup.created++;
+    inc(stats.clickup, 'created');
     logger.info(`ClickUp task created: ${res.data.url}`);
     return res.data;
   } catch (err) {
-    stats.clickup.failed++;
+    inc(stats.clickup, 'failed');
     logger.error('ClickUp creation failed: ' + (err.response?.data?.text || err.message));
     return null;
   }
@@ -206,7 +219,7 @@ let whatsappReady = false;
 app.get('/health', (_, res) => res.json({
   status:   'ok',
   whatsapp: { enabled: ENABLE_WHATSAPP, ready: whatsappReady },
-  telegram: { enabled: ENABLE_TELEGRAM, configured: !!TELEGRAM_TOKEN && TELEGRAM_TOKEN !== 'your-telegram-bot-token' },
+  telegram: { enabled: ENABLE_TELEGRAM, configured: !!config.tgToken && config.tgToken !== 'your-telegram-bot-token' },
 }));
 
 app.get('/qr', async (_, res) => {
@@ -230,7 +243,7 @@ app.get('/qr', async (_, res) => {
 app.post('/send', async (req, res) => {
   const { message, session_id } = req.body;
   if (!message) return res.status(400).json({ error: 'message required' });
-  stats.messages.api++;
+  inc(stats.messages, 'api');
   const response = await queryAgent(message, session_id || 'api-test');
   res.json({ response });
 });
@@ -310,17 +323,19 @@ function formatUptime(sec) {
 }
 
 app.post('/api/config', (req, res) => {
-  const { tgToken, cuToken, cuTeam, cuList } = req.body;
-  if (tgToken !== undefined) config.tgToken = tgToken;
-  if (cuToken !== undefined) config.cuToken = cuToken;
-  if (cuTeam  !== undefined) config.cuTeam  = cuTeam;
-  if (cuList  !== undefined) config.cuList  = cuList;
+  const { tgToken, secondTgToken, internalChannelId, cuToken, cuTeam, cuList } = req.body;
+  if (tgToken           !== undefined) config.tgToken           = tgToken;
+  if (secondTgToken     !== undefined) config.secondTgToken     = secondTgToken;
+  if (internalChannelId !== undefined) config.internalChannelId = internalChannelId;
+  if (cuToken           !== undefined) config.cuToken           = cuToken;
+  if (cuTeam            !== undefined) config.cuTeam            = cuTeam;
+  if (cuList            !== undefined) config.cuList            = cuList;
   saveConfig();
   
   // Trigger hot-reload of bots
   if (tgToken !== undefined) {
     logger.info('Telegram token changed, restarting bot...');
-    startTelegram(); 
+    startTelegram().catch(err => logger.error(`Telegram restart failed: ${err.message}`));
   }
   res.json({ success: true, config });
 });
@@ -364,15 +379,26 @@ async function startWhatsApp() {
     },
   });
 
-  client.on('qr',          qr  => { whatsappQR = qr; logger.info('WhatsApp QR ready → /qr'); try { require('qrcode-terminal').generate(qr, { small: true }); } catch(_){} });
-  client.on('ready',       ()  => { whatsappReady = true; whatsappQR = null; logger.info('WhatsApp ready'); });
-  client.on('disconnected', r  => { whatsappReady = false; logger.warn(`WhatsApp disconnected: ${r}`); });
+  client.on('qr',    qr => { whatsappQR = qr; logger.info('WhatsApp QR ready → /qr'); try { require('qrcode-terminal').generate(qr, { small: true }); } catch(_){} });
+  client.on('ready', ()  => { whatsappReady = true; whatsappQR = null; logger.info('WhatsApp ready'); });
+  client.on('disconnected', r => {
+    whatsappReady = false;
+    logger.warn(`WhatsApp disconnected: ${r}. Reconnecting...`);
+    let attempt = 0;
+    const retry = () => {
+      attempt++;
+      const delay = Math.min(1000 * 2 ** attempt, 60000); // 2s, 4s, 8s … cap 60s
+      logger.info(`WhatsApp reconnect attempt ${attempt} in ${delay / 1000}s...`);
+      setTimeout(() => startWhatsApp(), delay);
+    };
+    retry();
+  });
 
   client.on('message', async msg => {
     if (msg.isGroupMsg || msg.type !== 'chat') return;
     const body      = (msg.body || '').trim();
     if (!body) return;
-    stats.messages.whatsapp++;
+    inc(stats.messages, 'whatsapp');
     const sessionId = `wa_${msg.from}`;
     const lower     = body.toLowerCase();
 
@@ -525,7 +551,7 @@ async function startTelegram() {
   // ── All other messages ────────────────────────────────────────────────────────
   bot.on('message', async msg => {
     if (!msg.text || msg.text.startsWith('/')) return;
-    stats.messages.telegram++;
+    inc(stats.messages, 'telegram');
     const sessionId = `tg_${msg.chat.id}`;
     logger.info(`[TG:${msg.chat.id}] "${msg.text.slice(0, 60)}"`);
 
@@ -560,7 +586,7 @@ async function startTelegram() {
 async function startSecondTelegram() {
   if (!ENABLE_SECOND_TELEGRAM) { logger.info('Second Telegram disabled.'); return; }
 
-  const token = SECOND_TELEGRAM_TOKEN;
+  const token = config.secondTgToken;
   if (!token || token === 'your-second-bot-token-here') {
     logger.info('Second Telegram: no token set — skipping. Set SECOND_TELEGRAM_BOT_TOKEN to enable.');
     return;

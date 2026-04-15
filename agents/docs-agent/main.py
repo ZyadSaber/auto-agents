@@ -42,6 +42,9 @@ UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR",      "/app/uploads"))
 DB_PATH         = Path(os.getenv("DB_PATH",         "/app/db/solutions.db"))
 PORT            = int(os.getenv("PORT",              "8100"))
 API_KEY         = os.getenv("AGENT_API_KEY",        "cs-internal-agent-key")
+if not os.getenv("AGENT_API_KEY"):
+    import warnings; warnings.warn("AGENT_API_KEY is not set — using insecure default. Set it in .env before deployment.", stacklevel=1)
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1,http://10.0.0.11").split(",") if o.strip()]
 RATE_LIMIT_RPM  = int(os.getenv("RATE_LIMIT_RPM",  "20"))
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -121,6 +124,8 @@ def init_chroma(retries: int = 10, delay: int = 5):
 def get_db() -> sqlite3.Connection:
     con = sqlite3.connect(str(DB_PATH), check_same_thread=False)
     con.row_factory = sqlite3.Row
+    con.execute("PRAGMA journal_mode=WAL")   # concurrent reads don't block writes
+    con.execute("PRAGMA busy_timeout=5000")  # wait up to 5s instead of failing instantly
     return con
 
 def init_db():
@@ -363,22 +368,54 @@ def rag_query(question: str, session_id: str) -> dict:
     return {"answer": answer, "sources": sources}
 
 # ── FastAPI ────────────────────────────────────────────────────────────────────
+def validate_ollama_models():
+    """Exit with a clear error if required models are missing from Ollama."""
+    try:
+        client = ollama_sdk.Client(host=OLLAMA_BASE_URL)
+        available = {m["model"] for m in client.list().get("models", [])}
+        required = [ARABIC_MODEL, ENGLISH_MODEL, EMBED_MODEL]
+        missing = [m for m in required if m not in available]
+        if missing:
+            logger.error(
+                f"Required Ollama models not found: {missing}. "
+                f"Available: {sorted(available) or 'none'}. "
+                "Run `ollama pull <model>` and restart."
+            )
+            raise SystemExit(1)
+        logger.success(f"Ollama models OK: {', '.join(required)}")
+    except SystemExit:
+        raise
+    except Exception as e:
+        logger.warning(f"Ollama not reachable at startup: {e}. Continuing anyway.")
+
+async def chroma_health_loop():
+    """Periodic ChromaDB heartbeat every 60s — logs warning if unreachable."""
+    while True:
+        await asyncio.sleep(60)
+        try:
+            chroma_client.heartbeat()
+        except Exception as e:
+            logger.warning(f"ChromaDB heartbeat failed: {e}. Queries may fail until reconnected.")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Docs Agent starting...")
     init_db()
+    validate_ollama_models()
     init_chroma()       # retries built-in
     ingest_all_uploads()
     observer = Observer()
     observer.schedule(UploadWatcher(), str(UPLOAD_DIR), recursive=False)
     observer.start()
+    health_task = asyncio.create_task(chroma_health_loop())
     logger.success("Docs Agent ready.")
     yield
+    health_task.cancel()
     observer.stop()
     observer.join()
 
 app = FastAPI(title="Docs RAG Agent", version="2.1.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS, allow_methods=["*"], allow_headers=["*"])
 
 # ── Pydantic models ────────────────────────────────────────────────────────────
 class QuestionRequest(BaseModel):
@@ -428,13 +465,20 @@ async def ask(req: QuestionRequest, request: Request):
 @app.post("/upload", dependencies=[Depends(require_api_key)])
 async def upload_doc(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     allowed = {".pdf", ".docx", ".txt", ".xlsx", ".xls", ".csv"}
-    suffix  = Path(file.filename).suffix.lower()
+    # Sanitize: strip any directory components, keep only the bare filename
+    safe_name = Path(file.filename).name
+    if not safe_name:
+        raise HTTPException(400, "Invalid filename.")
+    suffix = Path(safe_name).suffix.lower()
     if suffix not in allowed:
         raise HTTPException(400, f"Unsupported type '{suffix}'. Allowed: {sorted(allowed)}")
-    dest = UPLOAD_DIR / file.filename
+    dest = UPLOAD_DIR / safe_name
+    # Confirm resolved path is still inside UPLOAD_DIR (guard against symlink tricks)
+    if not str(dest.resolve()).startswith(str(UPLOAD_DIR.resolve())):
+        raise HTTPException(400, "Invalid filename.")
     dest.write_bytes(await file.read())
     background_tasks.add_task(ingest_file, dest)
-    return {"message": f"'{file.filename}' received. Ingesting in background.", "filename": file.filename}
+    return {"message": f"'{safe_name}' received. Ingesting in background.", "filename": safe_name}
 
 @app.get("/documents", dependencies=[Depends(require_api_key)])
 async def list_documents():

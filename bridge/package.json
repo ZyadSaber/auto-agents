@@ -1,5 +1,5 @@
 {
-  "name": "openclaw-bridge",
+  "name": "channel-bridge",
   "version": "1.0.0",
   "description": "WhatsApp and Telegram bridge to AI customer service agents",
   "main": "index.js",

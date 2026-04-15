@@ -15,11 +15,30 @@ const db = require("./database");
 const upload = multer({ storage: multer.memoryStorage() });
 
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET =
-  process.env.JWT_SECRET || "cs-jwt-secret-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("FATAL: JWT_SECRET env var is not set. Set it in your .env file and restart.");
+  process.exit(1);
+}
 
-app.use(cors());
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://127.0.0.1:3001")
+  .split(",").map(o => o.trim()).filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow requests with no origin (e.g. curl, Postman, server-to-server)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin '${origin}' not allowed`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
+
+// Proxy error helper — logs the real error server-side, returns a safe message to client
+const proxyError = (res, context, err) => {
+  console.error(`[${context}]`, err.message || err);
+  if (!res.headersSent) res.status(500).json({ error: `${context} failed` });
+};
 
 // Initialize Super Admin if none exists
 const initSuperAdmin = async () => {
@@ -113,8 +132,7 @@ app.get("/api/models", authenticateToken, async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    console.error("Error fetching models:", err.message);
-    res.status(500).json({ error: "Could not fetch models" });
+    proxyError(res, "fetch models", err);
   }
 });
 
@@ -140,9 +158,26 @@ app.post("/api/chat", authenticateToken, async (req, res) => {
     targetModel = process.env.ENGLISH_MODEL || "llama3.3:70b";
   }
 
-  // If user explicitly picked a model in the UI dropdown, we respect it
+  // If user explicitly picked a model in the UI dropdown, validate and respect it
   if (req.body.model && req.body.model !== "auto") {
-    targetModel = req.body.model;
+    try {
+      const ollamaBase = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+      const tagsRes = await fetch(`${ollamaBase}/api/tags`);
+      if (tagsRes.ok) {
+        const { models = [] } = await tagsRes.json();
+        const available = models.map(m => m.model || m.name);
+        if (available.includes(req.body.model)) {
+          targetModel = req.body.model;
+        } else {
+          return res.status(400).json({ error: `Model '${req.body.model}' is not available on this server.` });
+        }
+      } else {
+        // Ollama unreachable — fall through with routed model, don't block the request
+        targetModel = req.body.model;
+      }
+    } catch {
+      targetModel = req.body.model; // Ollama unreachable — allow through
+    }
   }
 
   res.on('close', () => {
@@ -201,8 +236,7 @@ app.post("/api/models/pull", authenticateToken, requireSuperAdmin, async (req, r
       res.end();
     }
   } catch (err) {
-    console.error("Model pull error:", err.message);
-    if (!res.headersSent) res.status(500).json({ error: "Failed to pull model" });
+    proxyError(res, "pull model", err);
   }
 });
 
@@ -214,7 +248,7 @@ app.get("/api/models/ps", authenticateToken, requireSuperAdmin, async (req, res)
     if (!response.ok) throw new Error("Failed to fetch running models");
     res.json(await response.json());
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    proxyError(res, "fetch running models", err);
   }
 });
 
@@ -230,7 +264,7 @@ app.delete("/api/models/:name", authenticateToken, requireSuperAdmin, async (req
     if (!response.ok) throw new Error("Failed to delete model");
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    proxyError(res, "delete model", err);
   }
 });
 
@@ -258,8 +292,7 @@ app.post("/api/docs/upload", authenticateToken, upload.single("file"), async (re
     if (!response.ok) throw new Error(data.detail || "Upload failed");
     res.json(data);
   } catch (err) {
-    console.error("Upload proxy error:", err.message);
-    res.status(500).json({ error: err.message });
+    proxyError(res, "upload doc", err);
   }
 });
 
@@ -272,7 +305,7 @@ app.get("/api/docs", authenticateToken, async (req, res) => {
     if (!response.ok) throw new Error(data.detail || "Failed to fetch documents");
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    proxyError(res, "fetch docs", err);
   }
 });
 
@@ -286,7 +319,7 @@ app.delete("/api/docs/:filename", authenticateToken, requireSuperAdmin, async (r
     if (!response.ok) throw new Error(data.detail || "Failed to delete document");
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    proxyError(res, "delete doc", err);
   }
 });
 
@@ -305,7 +338,7 @@ app.post("/api/knowledge/learn", authenticateToken, async (req, res) => {
     if (!response.ok) throw new Error(data.detail || "Failed to learn solution");
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    proxyError(res, "learn solution", err);
   }
 });
 
@@ -318,7 +351,7 @@ app.get("/api/knowledge/solutions", authenticateToken, async (req, res) => {
     if (!response.ok) throw new Error(data.detail || "Failed to fetch solutions");
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    proxyError(res, "fetch solutions", err);
   }
 });
 
@@ -331,7 +364,7 @@ app.get("/api/bridge/status", authenticateToken, async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "Bridge service unreachable" });
+    proxyError(res, "bridge status", err);
   }
 });
 
@@ -342,7 +375,7 @@ app.get("/api/bridge/qr", authenticateToken, async (req, res) => {
     const html = await response.text();
     res.send(html);
   } catch (err) {
-    res.status(500).send("Could not load QR code");
+    proxyError(res, "bridge QR", err);
   }
 });
 
@@ -355,7 +388,7 @@ app.post("/api/bridge/whatsapp/reset", authenticateToken, requireSuperAdmin, asy
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "Failed to reset WhatsApp session" });
+    proxyError(res, "WhatsApp reset", err);
   }
 });
 
@@ -372,7 +405,7 @@ app.post("/api/bridge/config", authenticateToken, requireSuperAdmin, async (req,
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "Failed to update bridge configuration" });
+    proxyError(res, "bridge config update", err);
   }
 });
 
@@ -382,7 +415,7 @@ app.get("/api/bridge/stats", authenticateToken, async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "Bridge stats unreachable" });
+    proxyError(res, "bridge stats", err);
   }
 });
 
@@ -392,7 +425,7 @@ app.get("/api/bridge/logs", authenticateToken, requireSuperAdmin, async (req, re
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "Bridge logs unreachable" });
+    proxyError(res, "bridge logs", err);
   }
 });
 
@@ -406,7 +439,7 @@ app.post("/api/bridge/command", authenticateToken, requireSuperAdmin, async (req
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "Failed to run bridge command" });
+    proxyError(res, "bridge command", err);
   }
 });
 
@@ -434,7 +467,7 @@ app.get("/api/customers/sessions", authenticateToken, async (req, res) => {
 
     res.json(Array.from(sessionMap.values()).sort((a, b) => b.last_seen - a.last_seen));
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch customer sessions" });
+    proxyError(res, "fetch customer sessions", err);
   }
 });
 
@@ -454,7 +487,7 @@ app.get("/api/customers/history/:sessionId", authenticateToken, async (req, res)
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch conversation history" });
+    proxyError(res, "fetch conversation history", err);
   }
 });
 

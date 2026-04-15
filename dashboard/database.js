@@ -10,7 +10,7 @@ if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const db = new Database(dbPath, { verbose: console.log });
+const db = new Database(dbPath, { verbose: process.env.DEBUG_SQL ? console.log : undefined });
 
 // Initialize schema
 db.exec(`
