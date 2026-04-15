@@ -182,6 +182,81 @@ function sanitizeText(str) {
     .slice(0, 10000);             // hard cap — ClickUp description limit
 }
 
+// ── Escalation store (in-memory, last 50) — powers Bot 1 /pending ────────────
+const MAX_ESCALATIONS = 50;
+const escalationStore = []; // { sessionId, preview, clickupUrl, ts }
+
+function storeEscalation(sessionId, preview, clickupUrl) {
+  escalationStore.unshift({ sessionId, preview, clickupUrl, ts: new Date().toISOString() });
+  if (escalationStore.length > MAX_ESCALATIONS) escalationStore.pop();
+}
+
+// ── Notify internal staff channel (Bot 1) ─────────────────────────────────────
+async function notifyInternalChannel(text) {
+  const channelId = config.internalChannelId;
+  if (!channelId) return;
+  if (!global.tgBot) { logger.warn('notifyInternalChannel: Bot 1 not ready'); return; }
+  try {
+    const parts = text.match(/.{1,4000}/gs) || [text];
+    for (const part of parts) {
+      await global.tgBot.sendMessage(channelId, part);
+      if (parts.length > 1) await new Promise(r => setTimeout(r, 300));
+    }
+  } catch (err) {
+    logger.error(`notifyInternalChannel failed: ${err.message}`);
+  }
+}
+
+// ── Query agent for customer — docs first, falls back to general ──────────────
+// Returns { answer, found, sources }
+// found = true means docs agent had relevant sources — no escalation needed
+async function queryAgentForCustomer(message, sessionId) {
+  stats.sessions.add(sessionId);
+  logger.info(`[${sessionId}] Customer query: "${message.slice(0, 60)}"`);
+
+  // Step 1 — try docs agent
+  try {
+    const { data } = await agentHttp.post(`${DOCS_AGENT_URL}/ask`, {
+      question:   message,
+      session_id: sessionId,
+    });
+    const sources = data.sources || [];
+    const answer  = data.answer  || '';
+
+    if (sources.length > 0 && answer) {
+      logger.info(`[${sessionId}] Docs agent resolved (${sources.length} sources).`);
+      return { answer, found: true, sources };
+    }
+    // Docs agent had no relevant sources — fall through to general
+    logger.info(`[${sessionId}] Docs agent: no sources. Trying general agent.`);
+  } catch (err) {
+    inc(stats.errors, 'agent');
+    const status = err.response?.status;
+    if (status === 429) return { answer: 'Too many messages. Please wait a moment.\nرسائل كثيرة. يرجى الانتظار.', found: false, sources: [] };
+    if (status === 401) { logger.error('Agent rejected API key'); return { answer: 'Configuration error. Please contact support.', found: false, sources: [] }; }
+    logger.error(`Docs agent error [${sessionId}]: ${err.message}`);
+  }
+
+  // Step 2 — general agent as best-effort fallback
+  try {
+    const { data } = await agentHttp.post(`${GENERAL_AGENT_URL}/ask`, {
+      question:   message,
+      session_id: sessionId,
+    });
+    const answer = data.answer || '';
+    logger.info(`[${sessionId}] General agent responded (no sources — escalation needed).`);
+    return { answer, found: false, sources: [] };
+  } catch (err) {
+    inc(stats.errors, 'agent');
+    logger.error(`General agent error [${sessionId}]: ${err.message}`);
+    return {
+      answer: 'An error occurred. Please try again.\nحدث خطأ. يرجى المحاولة مجدداً.',
+      found: false,
+      sources: [],
+    };
+  }
+}
+
 // ── ClickUp Integration ───────────────────────────────────────────────────────
 async function createClickUpTask(description, customerSession) {
   if (!config.cuToken || !config.cuList) {
@@ -430,17 +505,17 @@ async function startWhatsApp() {
   await client.initialize();
 }
 
-// ── Telegram ──────────────────────────────────────────────────────────────────
+// ── Bot 1 — Internal Staff Telegram Bot ──────────────────────────────────────
+// Purpose : proactive push to INTERNAL_CHANNEL_ID on customer events
+//           + staff commands (/stats, /pending) from within that channel
+// Token   : config.tgToken (TELEGRAM_BOT_TOKEN)
+// Channel : config.internalChannelId (INTERNAL_CHANNEL_ID)
 async function startTelegram() {
-  if (!ENABLE_TELEGRAM) { logger.info('Telegram disabled.'); return; }
+  if (!ENABLE_TELEGRAM) { logger.info('Bot 1 (staff): disabled.'); return; }
 
   const token = config.tgToken;
-  if (!token || token === 'your-telegram-bot-token') {
-    logger.info('Telegram: no token set — skipping.');
-    return;
-  }
+  if (!token) { logger.info('Bot 1 (staff): no token set — skipping.'); return; }
 
-  // If there's an existing bot, stop it
   if (global.tgBot) {
     try { await global.tgBot.stopPolling(); } catch(e){}
   }
@@ -449,147 +524,103 @@ async function startTelegram() {
   try { TelegramBot = require('node-telegram-bot-api'); }
   catch { logger.warn('node-telegram-bot-api not installed.'); return; }
 
-  // IMPORTANT: delete any existing webhook before starting polling
-  // This prevents the "409 Conflict" error when a webhook was previously set
   try {
     const cleanupBot = new TelegramBot(token, { polling: false });
     await cleanupBot.deleteWebhook();
-    logger.info('Telegram: webhook cleared.');
-  } catch (e) {
-    logger.warn(`Telegram webhook clear failed (non-fatal): ${e.message}`);
-  }
+  } catch (e) { logger.warn(`Bot 1 webhook clear failed (non-fatal): ${e.message}`); }
 
   const bot = new TelegramBot(token, {
-    polling: {
-      interval: 1000,       // poll every 1 second
-      autoStart: true,
-      params: { timeout: 10 },
-    }
+    polling: { interval: 1000, autoStart: true, params: { timeout: 10 } },
   });
 
   global.tgBot = bot;
-  logger.info('Telegram bot started (polling)');
+  logger.info('Bot 1 (staff) started.');
 
-  // ── Safe send helper — plain text only, no Markdown ─────────────────────────
   async function send(chatId, text) {
     try {
-      // Telegram max message length = 4096 chars
-      if (text.length <= 4000) {
-        await bot.sendMessage(chatId, text);
-      } else {
-        const parts = text.match(/.{1,4000}/gs) || [text];
-        for (const part of parts) {
-          await bot.sendMessage(chatId, part);
-          await new Promise(r => setTimeout(r, 300)); // small delay between parts
-        }
+      const parts = text.match(/.{1,4000}/gs) || [text];
+      for (const part of parts) {
+        await bot.sendMessage(chatId, part);
+        if (parts.length > 1) await new Promise(r => setTimeout(r, 300));
       }
-    } catch (err) {
-      logger.error(`Telegram send failed [${chatId}]: ${err.message}`);
-    }
+    } catch (err) { logger.error(`Bot 1 send failed [${chatId}]: ${err.message}`); }
   }
 
-  // ── Commands ─────────────────────────────────────────────────────────────────
-  bot.onText(/\/start/, msg => {
-    const name = msg.from?.first_name || 'there';
-    send(msg.chat.id,
-      `Hello ${name}! I am your AI customer service assistant.\n` +
-      `مرحبا ${name}! انا مساعدك الذكي لخدمة العملاء.\n\n` +
-      `Send any question in Arabic or English.\n` +
-      `ارسل اي سؤال بالعربي او الانجليزي.\n\n` +
-      `Type /help for commands.`
-    );
+  // ── /stats — system overview ─────────────────────────────────────────────────
+  bot.onText(/\/stats/, msg => {
+    const uptimeSec = Math.floor((Date.now() - startTime) / 1000);
+    send(msg.chat.id, [
+      '📊 System Stats',
+      `⏱  Uptime: ${formatUptime(uptimeSec)}`,
+      `💬 Messages — WA: ${stats.messages.whatsapp}  TG: ${stats.messages.telegram}  API: ${stats.messages.api}`,
+      `👥 Active sessions: ${stats.sessions.size}`,
+      `❌ Agent errors: ${stats.errors.agent}`,
+      `📋 ClickUp — created: ${stats.clickup.created}  failed: ${stats.clickup.failed}`,
+      `📡 WhatsApp: ${whatsappReady ? '✅ connected' : '⚠️ disconnected'}`,
+      `🤖 Bot 2: ${global.tgBot2 ? '✅ running' : '⚠️ not running'}`,
+    ].join('\n'));
   });
 
+  // ── /pending — last escalations waiting for human resolution ────────────────
+  bot.onText(/\/pending/, msg => {
+    if (escalationStore.length === 0) {
+      return send(msg.chat.id, '✅ No pending escalations.');
+    }
+    const lines = ['🔴 Pending Escalations (latest first):\n'];
+    escalationStore.slice(0, 10).forEach((e, i) => {
+      const time = new Date(e.ts).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
+      lines.push(`${i + 1}. [${time}] ${e.sessionId}\n   "${e.preview}"\n   ${e.clickupUrl || 'No ClickUp task'}\n`);
+    });
+    send(msg.chat.id, lines.join('\n'));
+  });
+
+  // ── /help ────────────────────────────────────────────────────────────────────
   bot.onText(/\/help/, msg => {
     send(msg.chat.id,
-      'Commands:\n' +
-      '/docs    - Force Document Agent\n' +
-      '/general - Force General Agent\n' +
-      '/auto    - Auto-route (default)\n' +
-      '/clear   - Clear your history\n' +
-      '/report  - File ClickUp issue\n' +
-      '/start   - Welcome message\n\n' +
-      'الاوامر:\n' +
-      '/docs    - وكيل المستندات\n' +
-      '/general - الوكيل العام\n' +
-      '/auto    - توجيه تلقائي\n' +
-      '/clear   - مسح المحادثة\n' +
-      '/report  - إبلاغ عن مشكلة'
+      '🤖 Staff Bot Commands:\n' +
+      '/stats   — System statistics\n' +
+      '/pending — Recent customer escalations\n' +
+      '/help    — This message'
     );
   });
 
-  bot.onText(/\/report (.+)/, async (msg, match) => {
-    const desc = match[1];
-    const task = await createClickUpTask(desc, `tg_${msg.chat.id}`);
-    send(msg.chat.id, task ? `Task created: ${task.url}` : 'Failed to create task.');
-  });
-
-  bot.onText(/\/docs/, msg => {
-    const sid = `tg_${msg.chat.id}`;
-    prefCache.set(sid, 'docs');
-    send(msg.chat.id, 'Switched to Document Agent.\nتم التبديل الى وكيل المستندات.');
-  });
-
-  bot.onText(/\/general/, msg => {
-    const sid = `tg_${msg.chat.id}`;
-    prefCache.set(sid, 'general');
-    send(msg.chat.id, 'Switched to General Agent.\nتم التبديل الى الوكيل العام.');
-  });
-
-  bot.onText(/\/auto/, msg => {
-    const sid = `tg_${msg.chat.id}`;
-    prefCache.del(sid);
-    send(msg.chat.id, 'Auto-routing enabled.\nتم تفعيل التوجيه التلقائي.');
-  });
-
-  bot.onText(/\/clear/, async msg => {
-    const sid = `tg_${msg.chat.id}`;
-    await clearUserHistory(sid);
-    send(msg.chat.id, 'Conversation cleared.\nتم مسح المحادثة.');
-  });
-
-  // ── All other messages ────────────────────────────────────────────────────────
-  bot.on('message', async msg => {
+  // ── Ignore all non-command messages (this is a staff-only bot) ───────────────
+  bot.on('message', msg => {
     if (!msg.text || msg.text.startsWith('/')) return;
-    inc(stats.messages, 'telegram');
-    const sessionId = `tg_${msg.chat.id}`;
-    logger.info(`[TG:${msg.chat.id}] "${msg.text.slice(0, 60)}"`);
-
-    try { await bot.sendChatAction(msg.chat.id, 'typing'); } catch (_) {}
-
-    const response = await queryAgent(msg.text.trim(), sessionId);
-    await send(msg.chat.id, response);
+    // Only respond in the configured internal channel, silently ignore elsewhere
+    if (String(msg.chat.id) === String(config.internalChannelId)) return;
+    send(msg.chat.id, 'This is an internal staff monitoring bot. Use /help for available commands.');
   });
 
-  // ── Polling error handler with reconnect ──────────────────────────────────────
   bot.on('polling_error', err => {
     const code = err.response?.statusCode || err.code;
-    logger.error(`Telegram polling error [${code}]: ${err.message}`);
-
-    // 409 = webhook conflict — try to clear and restart
+    logger.error(`Bot 1 polling error [${code}]: ${err.message}`);
     if (code === 409) {
-      logger.warn('Webhook conflict detected. Attempting to clear webhook and restart polling...');
-      bot.stopPolling().then(() => {
-        return bot.deleteWebhook();
-      }).then(() => {
-        setTimeout(() => bot.startPolling(), 3000);
-      }).catch(e => logger.error(`Restart failed: ${e.message}`));
+      bot.stopPolling()
+        .then(() => bot.deleteWebhook())
+        .then(() => setTimeout(() => bot.startPolling(), 3000))
+        .catch(e => logger.error(`Bot 1 restart failed: ${e.message}`));
     }
   });
 
-  bot.on('error', err => {
-    logger.error(`Telegram error: ${err.message}`);
-  });
+  bot.on('error', err => logger.error(`Bot 1 error: ${err.message}`));
 }
 
-// ── Second Telegram (Issues Handler) ──────────────────────────────────────────
+// ── Bot 2 — Customer-Facing Telegram Bot ─────────────────────────────────────
+// Purpose : customer self-service via AI; auto-escalates to ClickUp + notifies
+//           internal staff (Bot 1) when the AI cannot resolve the issue.
+// Token   : config.secondTgToken (SECOND_TELEGRAM_BOT_TOKEN)
 async function startSecondTelegram() {
-  if (!ENABLE_SECOND_TELEGRAM) { logger.info('Second Telegram disabled.'); return; }
+  if (!ENABLE_SECOND_TELEGRAM) { logger.info('Bot 2 (customer): disabled.'); return; }
 
   const token = config.secondTgToken;
-  if (!token || token === 'your-second-bot-token-here') {
-    logger.info('Second Telegram: no token set — skipping. Set SECOND_TELEGRAM_BOT_TOKEN to enable.');
+  if (!token) {
+    logger.info('Bot 2 (customer): no token set — skipping. Set SECOND_TELEGRAM_BOT_TOKEN to enable.');
     return;
+  }
+
+  if (global.tgBot2) {
+    try { await global.tgBot2.stopPolling(); } catch(e){}
   }
 
   let TelegramBot;
@@ -599,68 +630,155 @@ async function startSecondTelegram() {
   try {
     const cleanupBot = new TelegramBot(token, { polling: false });
     await cleanupBot.deleteWebhook();
-    logger.info('Second Telegram: webhook cleared.');
-  } catch (e) {
-    logger.warn(`Second Telegram webhook clear failed (non-fatal): ${e.message}`);
-  }
+  } catch (e) { logger.warn(`Bot 2 webhook clear failed (non-fatal): ${e.message}`); }
 
   const bot = new TelegramBot(token, {
-    polling: {
-      interval: 1000,
-      autoStart: true,
-      params: { timeout: 10 },
-    }
+    polling: { interval: 1000, autoStart: true, params: { timeout: 10 } },
   });
 
-  logger.info('Second Telegram bot started (polling)');
+  global.tgBot2 = bot;
+  logger.info('Bot 2 (customer) started.');
+
+  // Per-customer in-flight guard — prevents duplicate requests while AI is thinking
+  const inFlight = new Set();
 
   async function send(chatId, text) {
     try {
-      if (text.length <= 4000) {
-        await bot.sendMessage(chatId, text);
-      } else {
-        const parts = text.match(/.{1,4000}/gs) || [text];
-        for (const part of parts) {
-          await bot.sendMessage(chatId, part);
-          await new Promise(r => setTimeout(r, 300));
-        }
+      const parts = text.match(/.{1,4000}/gs) || [text];
+      for (const part of parts) {
+        await bot.sendMessage(chatId, part);
+        if (parts.length > 1) await new Promise(r => setTimeout(r, 300));
       }
     } catch (err) {
-      logger.error(`Second Telegram send failed [${chatId}]: ${err.message}`);
+      logger.error(`Bot 2 send failed [${chatId}]: ${err.message}`);
     }
   }
 
+  // ── /start ───────────────────────────────────────────────────────────────────
   bot.onText(/\/start/, msg => {
-    send(msg.chat.id, 'Welcome to the specialized support channel.');
+    send(msg.chat.id,
+      'Welcome! 👋 How can I help you today?\n' +
+      'I\'ll do my best to answer your question. If I can\'t resolve it, I\'ll automatically escalate it to our support team.\n\n' +
+      'مرحباً! 👋 كيف يمكنني مساعدتك اليوم؟\n' +
+      'سأبذل قصارى جهدي للإجابة على سؤالك. إذا لم أتمكن من حله، سأقوم بتصعيده تلقائياً إلى فريق الدعم.'
+    );
   });
 
+  // ── /help ────────────────────────────────────────────────────────────────────
   bot.onText(/\/help/, msg => {
-    send(msg.chat.id, 'Type your issue and we will route it properly.');
+    send(msg.chat.id,
+      'Available commands:\n' +
+      '/start — Welcome message\n' +
+      '/clear — Clear your conversation history\n' +
+      '/help  — This message\n\n' +
+      'الأوامر المتاحة:\n' +
+      '/start — رسالة الترحيب\n' +
+      '/clear — مسح سجل المحادثة\n' +
+      '/help  — هذه الرسالة\n\n' +
+      'Just type your question and I\'ll answer it!\n' +
+      'فقط اكتب سؤالك وسأجيب عليه!'
+    );
   });
 
+  // ── /clear ───────────────────────────────────────────────────────────────────
+  bot.onText(/\/clear/, async msg => {
+    const sessionId = `tg2_${msg.chat.id}`;
+    await clearUserHistory(sessionId);
+    send(msg.chat.id,
+      'Your conversation history has been cleared. ✅\n' +
+      'تم مسح سجل محادثتك. ✅'
+    );
+  });
+
+  // ── Message handler ──────────────────────────────────────────────────────────
   bot.on('message', async msg => {
     if (!msg.text || msg.text.startsWith('/')) return;
-    const sessionId = `tg2_${msg.chat.id}`;
-    logger.info(`[TG2:${msg.chat.id}] "${msg.text.slice(0, 60)}"`);
 
-    try { await bot.sendChatAction(msg.chat.id, 'typing'); } catch (_) {}
-    
-    // Auto route logic or specialized logic
-    const response = await queryAgent(msg.text.trim(), sessionId);
-    await send(msg.chat.id, response);
+    const chatId    = msg.chat.id;
+    const sessionId = `tg2_${chatId}`;
+    const text      = msg.text.trim();
+
+    // Prevent stacking requests while AI is processing
+    if (inFlight.has(chatId)) {
+      return send(chatId,
+        'Please wait, I\'m still processing your previous message...\n' +
+        'يرجى الانتظار، لا أزال أعالج رسالتك السابقة...'
+      );
+    }
+
+    inFlight.add(chatId);
+    inc(stats.messages, 'telegram');
+    logger.info(`[Bot2:${chatId}] "${text.slice(0, 60)}"`);
+
+    try {
+      await bot.sendChatAction(chatId, 'typing');
+    } catch (_) {}
+
+    const { answer, found, sources } = await queryAgentForCustomer(text, sessionId);
+
+    if (found) {
+      // ── Resolved by docs agent ───────────────────────────────────────────────
+      let reply = answer;
+      if (sources && sources.length > 0) {
+        reply += `\n\nSource: ${sources.join(', ')}`;
+      }
+      await send(chatId, reply);
+
+      // Low-key log to internal channel (no escalation — just activity)
+      notifyInternalChannel(
+        `ℹ️ [Bot 2] Query resolved\n` +
+        `Session: ${sessionId}\n` +
+        `Preview: "${text.slice(0, 80)}"`
+      ).catch(() => {});
+
+    } else {
+      // ── Not resolved — send best-effort answer + escalate ────────────────────
+      if (answer) {
+        await send(chatId, answer);
+      }
+
+      await send(chatId,
+        '\n\nYour question has been escalated to our support team. A staff member will follow up with you shortly. 🔔\n\n' +
+        'تم تصعيد سؤالك إلى فريق الدعم. سيتواصل معك أحد أعضاء الفريق قريباً. 🔔'
+      );
+
+      // Create ClickUp task
+      const task = await createClickUpTask(
+        `Customer message (Telegram):\n\n${text}\n\nAI answer provided:\n${answer || '(none)'}`,
+        sessionId
+      );
+
+      const clickupUrl = task?.url || null;
+
+      // Store in escalation store for /pending command
+      storeEscalation(sessionId, text.slice(0, 120), clickupUrl);
+
+      // Notify internal staff channel
+      const firstName = msg.from?.first_name || 'Customer';
+      const username  = msg.from?.username ? `@${msg.from.username}` : '';
+      await notifyInternalChannel(
+        `🔴 New Escalation — Bot 2\n` +
+        `Customer: ${firstName} ${username} (session: ${sessionId})\n` +
+        `Message: "${text.slice(0, 200)}"\n` +
+        (clickupUrl ? `ClickUp: ${clickupUrl}` : '⚠️  ClickUp task creation failed')
+      );
+    }
+
+    inFlight.delete(chatId);
   });
 
   bot.on('polling_error', err => {
     const code = err.response?.statusCode || err.code;
-    logger.error(`Second Telegram polling error [${code}]: ${err.message}`);
+    logger.error(`Bot 2 polling error [${code}]: ${err.message}`);
     if (code === 409) {
-      bot.stopPolling().then(() => bot.deleteWebhook()).then(() => setTimeout(() => bot.startPolling(), 3000));
+      bot.stopPolling()
+        .then(() => bot.deleteWebhook())
+        .then(() => setTimeout(() => bot.startPolling(), 3000))
+        .catch(e => logger.error(`Bot 2 restart failed: ${e.message}`));
     }
   });
 
-  bot.on('error', err => {
-    logger.error(`Second Telegram error: ${err.message}`);
-  });
+  bot.on('error', err => logger.error(`Bot 2 error: ${err.message}`));
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────

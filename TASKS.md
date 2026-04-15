@@ -60,8 +60,8 @@
 | 2.3 | Sanitize file upload filenames | 🟠 | ✅ Done | `docs-agent/main.py` — strips directory components, validates path stays inside `UPLOAD_DIR` |
 | 2.4 | Sanitize ClickUp description input | 🟠 | ✅ Done | `openclaw/index.js` + `bridge/index.js` — `sanitizeText()` strips HTML, escapes entities, caps at 10k chars |
 | 2.5 | Add model existence validation on agent startup | 🟠 | ✅ Done | `validate_ollama_models()` added to both agents — queries Ollama `/api/tags`, exits with clear error if model missing |
-| 2.6 | Add rate limiting to dashboard Express routes | 🟡 | ⬜ Pending | Install `express-rate-limit`, apply to `/api/chat` and `/api/docs` |
-| 2.7 | Move secrets out of docker-compose into `.env` file (git-ignored) | 🟠 | ⬜ Pending | `AGENT_API_KEY`, `JWT_SECRET`, `TELEGRAM_BOT_TOKEN` — never commit `.env` |
+| 2.6 | Add rate limiting to dashboard Express routes | 🟡 | ✅ Done | `express-rate-limit` — keyed by JWT user ID (not IP — all internal users share LAN/NAT); 20 chat req/5 min, 10 upload req/10 min; proper JSON 429 response with log |
+| 2.7 | Move secrets out of docker-compose into `.env` file (git-ignored) | 🟠 | ✅ Done | All 4 services use `env_file: .env`; secret vars (`JWT_SECRET`, `AGENT_API_KEY`, `TELEGRAM_BOT_TOKEN`, `INITIAL_ADMIN_PASSWORD`, `CLICKUP_API_KEY`) have no fallback defaults — Docker fails loudly if missing. Non-secret config retains safe `:-defaults`. `.env.example` updated with ⚠️ markers and `openssl`/`node crypto` generation commands |
 
 ---
 
@@ -69,7 +69,7 @@
 
 | # | Task | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 3.1 | Migrate SQLite → PostgreSQL | 🔴 | ⬜ Pending | Use `pg` driver in dashboard, Alembic migrations in Python agents |
+| 3.1 | ~~Migrate SQLite → PostgreSQL~~ — moved to Phase 6 | — | ➡️ Moved | SQLite is correct for internal test phase. Migrate before first external customer. See 6.11 |
 | 3.2 | Add retry + exponential backoff for Ollama calls | 🟠 | ⬜ Pending | `dashboard/server.js` + both agents — retry 3x with 1s/2s/4s backoff |
 | 3.3 | Add periodic ChromaDB health check (not just startup) | 🟠 | ⬜ Pending | `docs-agent/main.py` — background task every 60s |
 | 3.4 | Add Ollama concurrency queue (max 5 parallel requests) | 🟡 | ⬜ Pending | Simple semaphore in agents |
@@ -77,6 +77,12 @@
 | 3.6 | Add database backup cron (daily SQLite dump → `/backup/`) | 🟠 | ⬜ Pending | Add to docker-compose as a backup service |
 | 3.7 | Add session cleanup job (delete sessions inactive >30 days) | 🟡 | ⬜ Pending | Python `BackgroundScheduler` in agents |
 | 3.8 | Add pagination to `/documents` and `/solutions` endpoints | 🟡 | ⬜ Pending | Add `limit` + `offset` query params |
+| 3.9 | Service health polling — backend `GET /api/health/services` | 🟠 | ⬜ Pending | Single endpoint that pings Ollama, ChromaDB, Docs Agent, General Agent, Bridge in parallel and returns `{ service, status, latency_ms }[]` — polled every 30s by the frontend |
+| 3.10 | Global service health context (React) | 🟠 | ⬜ Pending | `ServiceHealthContext` + `useServiceHealth()` hook — provides `{ ollama, chromadb, docsAgent, generalAgent, bridge }` status to any component; polling lives here, not in individual pages |
+| 3.11 | Header service status indicator | 🟡 | ⬜ Pending | Small dot/badge in the header — green all healthy, amber 1+ degraded, red 1+ down — clicking opens a popover with the per-service breakdown |
+| 3.12 | Disable pages when their required service is down | 🟠 | ⬜ Pending | Chat → needs Ollama + General Agent; Documents → needs Docs Agent + ChromaDB; Channels → needs Bridge; LLM Manager → needs Ollama. Nav link shows a warning icon and page shows a "Service unavailable" banner instead of crashing silently |
+| 3.13 | Code splitting — extract server.js into route modules | 🟡 | ⬜ Pending | `dashboard/server.js` is a single 700+ line file. Split into: `routes/auth.js`, `routes/chat.js`, `routes/models.js`, `routes/users.js`, `routes/proxy.js`, `routes/config.js`. `server.js` becomes the entry point that mounts them |
+| 3.14 | Code splitting — extract Python agents into modules | 🟡 | ⬜ Pending | `docs-agent/main.py` and `general-agent/main.py` are monolithic. Split into: `routes/`, `services/` (business logic), `db/` (SQLite helpers), `config.py`. FastAPI app becomes thin router only |
 
 ---
 
@@ -104,8 +110,8 @@
 | 5.5 | Role-based document access (staff sees only their dept docs) | 🟡 | ⬜ Pending | Tag docs with department label |
 | 5.6 | Admin bulk operations (delete all sessions, re-embed all docs) | 🟡 | ⬜ Pending | |
 | 5.7 | API key management UI (generate/revoke agent keys from dashboard) | 🔵 | ⬜ Pending | |
-| 5.8 | Build Bot 1 (internal staff bot) — proactive push to `INTERNAL_CHANNEL_ID` when new problem arrives or AI finds a solution; commands: `/stats`, `/pending` | 🟠 | ⬜ Pending | Token: `TELEGRAM_BOT_TOKEN` → `config.tgToken`; channel: `INTERNAL_CHANNEL_ID` → `config.internalChannelId`; push triggered from `queryAgent()` and ClickUp escalation path |
-| 5.9 | Build Bot 2 (customer-facing bot) — receive customer messages, hit AI agent for solution, escalate to ClickUp if no solution found, notify customer of escalation | 🟠 | ⬜ Pending | Token: `SECOND_TELEGRAM_BOT_TOKEN` → `config.secondTgToken`; single tenant for now (multi-tenant deferred to 6.1); rewrite `startSecondTelegram()` in `openclaw/index.js` + `bridge/index.js` |
+| 5.8 | Build Bot 1 (internal staff bot) — proactive push to `INTERNAL_CHANNEL_ID` when new problem arrives or AI finds a solution; commands: `/stats`, `/pending` | 🟠 | ✅ Done | `bridge/index.js` — `startTelegram()` fully rewritten; `global.tgBot` set for cross-bot use; `/stats`, `/pending`, `/help` commands; ignores non-command messages; `notifyInternalChannel()` uses this bot for all push notifications |
+| 5.9 | Build Bot 2 (customer-facing bot) — receive customer messages, hit AI agent for solution, escalate to ClickUp if no solution found, notify customer of escalation | 🟠 | ✅ Done | `bridge/index.js` — `startSecondTelegram()` fully rewritten; uses `queryAgentForCustomer()` (docs first → general fallback); `found=true` → answer + low-key internal log; `found=false` → answer + escalation message + `createClickUpTask()` + `storeEscalation()` + `notifyInternalChannel()`; in-flight guard prevents duplicate AI requests; `/start`, `/help`, `/clear` commands; `global.tgBot2` set for Bot 1 `/stats` reporting |
 
 ---
 
@@ -123,6 +129,7 @@
 | 6.8 | Automated test suite (unit + integration + E2E) | 🟠 | ⬜ Pending | Zero tests currently exist |
 | 6.9 | Migrate backend to TypeScript | 🔵 | ⬜ Pending | Optional but helps at scale |
 | 6.10 | Replace `whatsapp-web.js` with Meta WhatsApp Cloud API | 🔴 | ⬜ Pending | **Pre-production gate** — unofficial Baileys/QR carries ban risk at scale; Meta Cloud API is free for first 1k conversations/month, webhook-based, ~50 lines changed in `bridge/index.js` only |
+| 6.11 | Migrate SQLite → PostgreSQL | 🔴 | ⬜ Pending | **Pre-external-customer gate** — needed for multi-tenancy (6.1), concurrent writes, and production tooling. Use `pg` driver in dashboard, Alembic migrations in Python agents. SQLite schema is already clean so migration is straightforward. |
 
 ---
 
@@ -135,6 +142,38 @@
 | 7.1 | First-run setup wizard (auto-configure `.env` via UI) | On first boot with no `.env`, show a setup page: enter server IP, JWT secret, bot tokens, ClickUp keys → generates and writes `.env` automatically. Removes manual setup friction for self-hosted deployments. |
 | 7.2 | Auto-detect server IP on first run | During setup wizard, detect LAN IP and pre-fill `ALLOWED_ORIGINS` and branding fields. User just confirms and hits save. |
 | 7.3 | Health dashboard "onboarding checklist" | After setup wizard, show a checklist: Ollama connected ✅, models pulled ✅, Telegram token set ✅, etc. Green = ready to use. |
+| 7.4 | Removed `scripts/manage.sh` | Script was redundant — all functionality (upload, teach, ask, status) already exists in the dashboard. start/stop are just `docker compose up/down`. Deleted to avoid confusion and the security issue of unauthenticated API calls. |
+
+---
+
+## Brain Dump — Logs Screen (Future Ideas)
+
+> Raw ideas for building a proper unified logs screen into the dashboard. No commitment — pick what's worth doing when the time comes.
+
+### Viewing & Filtering
+- **Unified log stream** — single view that aggregates logs from all services (dashboard, bridge, docs-agent, general-agent) with a service filter dropdown
+- **Log level filter** — toggle INFO / WARN / ERROR / DEBUG independently
+- **Keyword search** — live filter across visible log lines as you type
+- **Time range picker** — show logs from last 5 min / 1 hour / today / custom range
+- **Auto-scroll toggle** — pin to bottom when live, pause when scrolling up to read (like a real terminal)
+- **Highlight errors** — ERROR lines get a red left border, WARN gets amber, makes scanning fast
+
+### Actions
+- **One-click copy** — copy a single log line or the entire visible window to clipboard
+- **Export logs** — download current filtered view as `.txt` or `.json`
+- **Clear display** — wipe the visible buffer without affecting actual logs (client-side only)
+- **Mark line** — bookmark a specific line to come back to (session-only)
+
+### Smart Features
+- **Error grouping** — repeated identical errors collapsed into "same error ×12" instead of flooding the view
+- **Anomaly badge** — if error rate spikes above normal in the last 5 min, show a red badge on the Logs nav link
+- **Correlation ID tracing** — if a request ID is in the log, clicking it filters all log lines that share that ID across all services (full request trace)
+- **Parsed structured logs** — if log line is JSON, render it as an expandable tree instead of raw string
+
+### Per-Service Tabs
+- Each service gets its own tab (Dashboard · Bridge · Docs Agent · General Agent)
+- Tab badge shows unread error count since you last viewed it
+- Bridge tab is split: WhatsApp logs vs Telegram logs vs ClickUp logs
 
 ---
 
@@ -206,3 +245,6 @@ Nginx :80
 | 2026-04-15 | Bot 2 escalation path: AI agent → ClickUp | If AI cannot resolve customer issue, create ClickUp task for company team and notify customer of escalation — no other ticketing system needed |
 | 2026-04-15 | Bot 1 uses proactive push (not command-only) | Staff should be notified automatically when events happen — commands (`/stats`, `/pending`) are a bonus, not the core value |
 | 2026-04-15 | Model validation exits hard if models missing | Silent failure when a model is missing caused confusing UX — better to fail fast at startup with a clear message listing what to `ollama pull` |
+| 2026-04-15 | Service health polling belongs in a shared React context, not individual pages | Each page hitting its own health check causes duplicate requests and inconsistent UI state — one poller feeds all consumers via context |
+| 2026-04-15 | Pages disabled (not hidden) when their service is down | Hiding nav items when a service is down is confusing — user doesn't know why the page is gone. Show the nav item with a warning icon and a clear "service unavailable" banner on the page itself |
+| 2026-04-15 | server.js split deferred to Phase 3, not doing it now | File is large but fully working — splitting mid-feature adds risk with no user-visible benefit. Do it as a dedicated refactor task before staff-wide rollout |

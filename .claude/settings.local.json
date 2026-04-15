@@ -15,7 +15,8 @@
       "Bash(pkill -f \"node server.js\")",
       "Bash(taskkill /F /IM node.exe)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npx nodemon *)"
     ]
   }
 }

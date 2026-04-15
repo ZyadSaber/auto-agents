@@ -15,9 +15,6 @@ services:
 
   # ─────────────────────────────────────────────────────────────
   # OLLAMA — runs independently, no dependencies
-  # Resource plan (120 GB RAM / 16 cores):
-  #   CPU  : 14 cores reserved for inference
-  #   RAM  : 110 GB — comfortably runs 32b-70b Q4 models + KV cache
   # ─────────────────────────────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
@@ -30,20 +27,12 @@ services:
     networks:
       - ai-net
     environment:
-      # ── Keep models hot ───────────────────────────────────────
       - OLLAMA_KEEP_ALIVE=24h
-      # ── CPU thread count — match host logical processors ──────
       - OLLAMA_NUM_THREAD=${OLLAMA_NUM_THREAD:-8}
-      # ── Parallel inference sessions —————————————————————────
-      # Lower value ensures each session gets more compute
       - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-2}
-      # ── Keep up to 2 models resident in RAM simultaneously ────
       - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-2}
-      # ── Flash attention — reduces memory bandwidth pressure ───
       - OLLAMA_FLASH_ATTENTION=1
-      # ── Large request queue so nothing is dropped under load ──
       - OLLAMA_MAX_QUEUE=512
-    # Allow mlock so the OS never swaps model weights to disk
     ulimits:
       memlock:
         soft: -1
@@ -59,14 +48,6 @@ services:
         reservations:
           cpus: "${OLLAMA_CPU_RESERVE:-0}"
           memory: "${OLLAMA_MEM_RESERVE:-0}"
-    # GPU: uncomment if you have NVIDIA GPU
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
       interval: 15s
@@ -75,8 +56,7 @@ services:
       start_period: 30s
 
   # ─────────────────────────────────────────────────────────────
-  # CHROMADB — runs independently, no dependencies
-  # Pinned to 0.5.3 to exactly match the Python client package.
+  # CHROMADB
   # ─────────────────────────────────────────────────────────────
   chromadb:
     image: chromadb/chroma:0.5.3
@@ -91,7 +71,6 @@ services:
     environment:
       - ANONYMIZED_TELEMETRY=false
       - IS_PERSISTENT=TRUE
-      # Allow ChromaDB to use all available shared memory for HNSW indices
       - CHROMA_SERVER_THREAD_POOL_SIZE=8
     deploy:
       resources:
@@ -109,7 +88,7 @@ services:
       start_period: 30s
 
   # ─────────────────────────────────────────────────────────────
-  # DOCS AGENT — waits for both ollama AND chromadb to be healthy
+  # DOCS AGENT
   # ─────────────────────────────────────────────────────────────
   docs-agent:
     build:
@@ -124,25 +103,30 @@ services:
       - ./uploads:/app/uploads
     networks:
       - ai-net
+    env_file:
+      - .env
     depends_on:
       ollama:
         condition: service_healthy
       chromadb:
         condition: service_healthy
     environment:
+      # Service URLs — hardcoded to docker-compose service names, not secrets
       - OLLAMA_BASE_URL=http://ollama:11434
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
-      - COLLECTION_NAME=customer_docs
-      - SOLUTIONS_COLLECTION=known_solutions
-      - EMBED_MODEL=nomic-embed-text
-      - CHAT_MODEL=${CHAT_MODEL:-aya-expanse:8b}
       - UPLOAD_DIR=/app/uploads
       - DB_PATH=/app/db/solutions.db
       - PORT=8100
-      - AGENT_API_KEY=${AGENT_API_KEY:-cs-internal-agent-key}
+      # Non-secret config with safe defaults
+      - COLLECTION_NAME=${COLLECTION_NAME:-customer_docs}
+      - SOLUTIONS_COLLECTION=${SOLUTIONS_COLLECTION:-known_solutions}
+      - EMBED_MODEL=${EMBED_MODEL:-nomic-embed-text}
+      - CHAT_MODEL=${CHAT_MODEL:-aya-expanse:8b}
       - RATE_LIMIT_RPM=${RATE_LIMIT_RPM:-20}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://127.0.0.1,http://10.0.0.11}
+      # Secrets — must be set in .env (no fallback defaults here)
+      - AGENT_API_KEY=${AGENT_API_KEY}
     deploy:
       resources:
         limits:
@@ -159,7 +143,7 @@ services:
       start_period: 60s
 
   # ─────────────────────────────────────────────────────────────
-  # GENERAL AGENT — waits only for ollama
+  # GENERAL AGENT
   # ─────────────────────────────────────────────────────────────
   general-agent:
     build:
@@ -173,17 +157,20 @@ services:
       - general-agent-db:/app/db
     networks:
       - ai-net
+    env_file:
+      - .env
     depends_on:
       ollama:
         condition: service_healthy
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
-      - CHAT_MODEL=${CHAT_MODEL:-aya-expanse:32b}
-      - PORT=8200
       - DB_PATH=/app/db/general_history.db
-      - AGENT_API_KEY=${AGENT_API_KEY:-cs-internal-agent-key}
+      - PORT=8200
+      - CHAT_MODEL=${CHAT_MODEL:-aya-expanse:32b}
       - RATE_LIMIT_RPM=${RATE_LIMIT_RPM:-20}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://127.0.0.1,http://10.0.0.11}
+      # Secrets — must be set in .env
+      - AGENT_API_KEY=${AGENT_API_KEY}
     deploy:
       resources:
         limits:
@@ -200,7 +187,7 @@ services:
       start_period: 60s
 
   # ─────────────────────────────────────────────────────────────
-  # CS DASHBOARD — waits for ollama, docs-agent and general-agent
+  # CS DASHBOARD
   # ─────────────────────────────────────────────────────────────
   cs-dashboard:
     build:
@@ -214,6 +201,8 @@ services:
       - dashboard-data:/app/data
     networks:
       - ai-net
+    env_file:
+      - .env
     depends_on:
       ollama:
         condition: service_healthy
@@ -223,27 +212,29 @@ services:
         condition: service_healthy
     environment:
       - PORT=3001
+      - DB_PATH=/app/data/dashboard.db
+      # Service URLs
       - OLLAMA_BASE_URL=http://ollama:11434
       - DOCS_AGENT_URL=http://docs-agent:8100
       - GENERAL_AGENT_URL=http://general-agent:8200
       - BRIDGE_URL=http://bridge:3100
       - CHROMADB_URL=http://chromadb:8000
-      - JWT_SECRET=${JWT_SECRET:-cs-jwt-secret-change-in-production}
-      - DB_PATH=/app/data/dashboard.db
+      # Non-secret config with safe defaults
       - CHAT_MODEL=${CHAT_MODEL:-aya-expanse:32b}
-      - PORTAINER_URL=${PORTAINER_URL:-}
-      - PORTAINER_ENABLED=${PORTAINER_ENABLED:-false}
-      - INITIAL_ADMIN_USERNAME=${INITIAL_ADMIN_USERNAME:-admin}
-      - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD:-changeme123}
-      - MONITOR_REFRESH_INTERVAL=${MONITOR_REFRESH_INTERVAL:-5000}
-      - AGENT_API_KEY=${AGENT_API_KEY:-cs-internal-agent-key}
       - ARABIC_MODEL=${ARABIC_MODEL:-qwen2.5:72b}
       - ENGLISH_MODEL=${ENGLISH_MODEL:-llama3.3:70b}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://127.0.0.1,http://10.0.0.11}
-      # ── Branding (self-hosted customers can override these) ────
+      - MONITOR_REFRESH_INTERVAL=${MONITOR_REFRESH_INTERVAL:-5000}
+      - PORTAINER_URL=${PORTAINER_URL:-}
+      - PORTAINER_ENABLED=${PORTAINER_ENABLED:-false}
       - SYSTEM_NAME=${SYSTEM_NAME:-AI Customer Service}
       - COMPANY_NAME=${COMPANY_NAME:-}
       - SYSTEM_TAGLINE=${SYSTEM_TAGLINE:-Powered by local AI}
+      # Secrets — must be set in .env
+      - JWT_SECRET=${JWT_SECRET}
+      - AGENT_API_KEY=${AGENT_API_KEY}
+      - INITIAL_ADMIN_USERNAME=${INITIAL_ADMIN_USERNAME}
+      - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:3001/api/health || exit 1"]
       interval: 20s
@@ -252,7 +243,7 @@ services:
       start_period: 30s
 
   # ─────────────────────────────────────────────────────────────
-  # BRIDGE (Channel Bridge) — WhatsApp + Telegram → AI agents
+  # BRIDGE (Channel Bridge)
   # ─────────────────────────────────────────────────────────────
   bridge:
     build:
@@ -266,6 +257,8 @@ services:
       - bridge-data:/app/data
     networks:
       - ai-net
+    env_file:
+      - .env
     depends_on:
       docs-agent:
         condition: service_healthy
@@ -275,14 +268,16 @@ services:
       - PORT=3100
       - DOCS_AGENT_URL=http://docs-agent:8100
       - GENERAL_AGENT_URL=http://general-agent:8200
-      - AGENT_API_KEY=${AGENT_API_KEY:-cs-internal-agent-key}
       - WHATSAPP_SESSION_NAME=cs-bot
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-your-telegram-bot-token}
-      - SECOND_TELEGRAM_BOT_TOKEN=${SECOND_TELEGRAM_BOT_TOKEN:-}
+      # Feature flags with safe defaults
       - ENABLE_WHATSAPP=${ENABLE_WHATSAPP:-true}
       - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
       - ENABLE_SECOND_TELEGRAM=${ENABLE_SECOND_TELEGRAM:-false}
-      - CLICKUP_API_KEY=${CLICKUP_API_KEY:-}
+      # Secrets — must be set in .env
+      - AGENT_API_KEY=${AGENT_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - SECOND_TELEGRAM_BOT_TOKEN=${SECOND_TELEGRAM_BOT_TOKEN}
+      - CLICKUP_API_KEY=${CLICKUP_API_KEY}
     deploy:
       resources:
         limits:
@@ -293,7 +288,7 @@ services:
           memory: "${BRIDGE_MEM_RESERVE:-0}"
 
   # ─────────────────────────────────────────────────────────────
-  # NGINX — starts last, depends on cs-dashboard + bridge
+  # NGINX
   # ─────────────────────────────────────────────────────────────
   nginx:
     image: nginx:alpine
