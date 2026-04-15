@@ -209,8 +209,11 @@ def extract_text(path: Path) -> list[str]:
 # ── Embedding ──────────────────────────────────────────────────────────────────
 def embed(texts: list[str]) -> list[list[float]]:
     client = ollama_sdk.Client(host=OLLAMA_BASE_URL)
-    # ollama >= 0.3.x returns a typed EmbeddingsResponse object, not a dict
-    return [client.embeddings(model=EMBED_MODEL, prompt=t).embedding for t in texts]
+    result = []
+    for t in texts:
+        r = client.embeddings(model=EMBED_MODEL, prompt=t)
+        result.append(r["embedding"] if isinstance(r, dict) else r.embedding)
+    return result
 
 # ── File ingestion ─────────────────────────────────────────────────────────────
 def ingest_file(path: Path):

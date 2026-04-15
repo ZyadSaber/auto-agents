@@ -1,0 +1,320 @@
+KNOWN PROBLEMS & SOLUTIONS
+Customer Service Knowledge Base
+Last Updated: 2025
+
+مشاكل وحلول معروفة
+قاعدة معرفة خدمة العملاء
+
+════════════════════════════════════════════════════════════
+PROBLEM 1 — PDF Document Opens Blank or Shows Errors
+المشكلة 1 — مستند PDF يفتح فارغاً أو يظهر أخطاء
+════════════════════════════════════════════════════════════
+
+PROBLEM:
+Customer downloaded their official document (certificate, invoice, statement) from the portal but the PDF opens blank, shows garbled text, or displays a signature error message.
+
+المشكلة:
+قام العميل بتنزيل مستنده الرسمي (شهادة، فاتورة، كشف حساب) من البوابة ولكن PDF يفتح فارغاً أو يظهر نصاً غير مقروء أو رسالة خطأ في التوقيع.
+
+SOLUTION:
+The official documents use digital signatures and encryption that are only supported by Adobe Acrobat Reader DC. Browser PDF viewers (Chrome, Edge, Firefox built-in) cannot render these documents correctly.
+
+Step 1: Download Adobe Acrobat Reader DC for free from adobe.com/acrobat/pdf-reader
+Step 2: Install it on the computer
+Step 3: Right-click the downloaded PDF → Open With → Adobe Acrobat Reader DC
+Step 4: The document should now open correctly with the digital signature verified
+
+If still blank after using Adobe Reader:
+- Check if the file downloaded completely (file size should be more than 100KB)
+- Try downloading again from the portal
+- Clear browser downloads and re-download
+
+الحل:
+المستندات الرسمية تستخدم التوقيعات الرقمية والتشفير التي يدعمها فقط Adobe Acrobat Reader DC. عارضات PDF المدمجة في المتصفح (Chrome، Edge، Firefox) لا تستطيع عرض هذه المستندات بشكل صحيح.
+
+الخطوة 1: تنزيل Adobe Acrobat Reader DC مجاناً من adobe.com/acrobat/pdf-reader
+الخطوة 2: تثبيته على الكمبيوتر
+الخطوة 3: انقر بزر الماوس الأيمن على PDF المنزَّل → فتح بـ → Adobe Acrobat Reader DC
+الخطوة 4: يجب أن يفتح المستند الآن بشكل صحيح مع التحقق من التوقيع الرقمي
+
+إذا لا يزال فارغاً بعد استخدام Adobe Reader:
+- تحقق من اكتمال تنزيل الملف (يجب أن يكون حجم الملف أكثر من 100 كيلوبايت)
+- حاول التنزيل مرة أخرى من البوابة
+- امسح تنزيلات المتصفح وأعد التنزيل
+
+════════════════════════════════════════════════════════════
+PROBLEM 2 — Portal Login OTP Not Received
+المشكلة 2 — عدم استلام رمز OTP لتسجيل الدخول إلى البوابة
+════════════════════════════════════════════════════════════
+
+PROBLEM:
+Customer requests password reset or new account registration but does not receive the OTP SMS on their mobile phone. Customer has been waiting more than 5 minutes.
+
+المشكلة:
+يطلب العميل إعادة تعيين كلمة المرور أو تسجيل حساب جديد ولكنه لا يستلم رسالة OTP على هاتفه المحمول. ينتظر العميل أكثر من 5 دقائق.
+
+SOLUTION:
+Follow these steps in order:
+
+Step 1: Confirm the mobile number registered in the system
+Ask the customer to verify their registered number — staff can check (last 3 digits only for privacy) in the customer management system using the National ID.
+
+Step 2: Check if number is correct but delayed
+SMS delivery can take up to 3 minutes depending on the network carrier. Ask customer to wait and check again.
+
+Step 3: Resend OTP
+On the portal, there is a "Resend OTP" button available after 2 minutes. Ask customer to use it.
+
+Step 4: If number is wrong or inaccessible
+Customer must visit in person with valid National ID. Staff will:
+- Verify identity
+- Update the mobile number in the system
+- Issue a temporary password
+
+Step 5: If SMS service is down (system-wide issue)
+Check the IT status board. If SMS service is marked as degraded, use the manual override: Form IT-101 — Emergency Portal Access. Supervisor approval required.
+
+الحل:
+اتبع هذه الخطوات بالترتيب:
+
+الخطوة 1: تأكيد رقم الجوال المسجل في النظام
+اطلب من العميل التحقق من رقمه المسجل — يمكن للموظف التحقق (آخر 3 أرقام فقط للخصوصية) في نظام إدارة العملاء باستخدام بطاقة الهوية الوطنية.
+
+الخطوة 2: تحقق مما إذا كان الرقم صحيحاً ولكن متأخراً
+يمكن أن يستغرق توصيل الرسائل القصيرة حتى 3 دقائق حسب شبكة الاتصالات. اطلب من العميل الانتظار والتحقق مرة أخرى.
+
+الخطوة 3: إعادة إرسال OTP
+على البوابة، يوجد زر "إعادة إرسال OTP" متاح بعد دقيقتين. اطلب من العميل استخدامه.
+
+الخطوة 4: إذا كان الرقم خاطئاً أو غير متاح
+يجب على العميل الزيارة الشخصية بهوية وطنية سارية. سيقوم الموظف بـ:
+- التحقق من الهوية
+- تحديث رقم الجوال في النظام
+- إصدار كلمة مرور مؤقتة
+
+الخطوة 5: إذا كانت خدمة الرسائل القصيرة معطلة (مشكلة على مستوى النظام)
+تحقق من لوحة حالة IT. إذا كانت خدمة الرسائل القصيرة محددة كمتدهورة، استخدم التجاوز اليدوي: نموذج IT-101 — وصول طارئ للبوابة. يتطلب موافقة المشرف.
+
+════════════════════════════════════════════════════════════
+PROBLEM 3 — Bank Transfer Payment Not Reflected After 48 Hours
+المشكلة 3 — التحويل البنكي لم يُعكس بعد 48 ساعة
+════════════════════════════════════════════════════════════
+
+PROBLEM:
+Customer paid via bank transfer for a service. It has been more than 48 hours and the payment is still showing as "Pending" in the system. The customer's service request is on hold because of this.
+
+المشكلة:
+دفع العميل عبر تحويل بنكي لخدمة ما. مرت أكثر من 48 ساعة والدفع لا يزال يظهر كـ "معلق" في النظام. طلب خدمة العميل معلق بسبب ذلك.
+
+SOLUTION:
+Step 1: Ask the customer to provide proof of transfer
+They need the bank transfer receipt showing:
+- Transfer date and time
+- Amount transferred
+- Destination account number
+- Transfer reference/transaction number
+
+Step 2: Verify the transfer details
+Check that:
+- Amount matches the required fee exactly
+- Destination account number is correct (compare with official account on File FIN-BANK-001)
+- Customer included their ID or request number as payment reference
+
+Step 3: If details are correct — manual payment confirmation
+Submit Form FIN-301 — Payment Confirmation Request with:
+- Customer ID
+- Service request number
+- Bank transfer receipt attached
+Finance team will manually verify with bank and confirm within 4 hours.
+
+Step 4: If wrong account or wrong amount was transferred
+This requires the Finance Manager to handle directly.
+The customer must contact their bank to reverse or correct the transfer.
+Finance Manager: Ext. 2301
+
+Step 5: Temporary service release (urgent cases only)
+If customer has a hard deadline, supervisor can authorize temporary service release pending payment confirmation. Requires Form FIN-401 — Temporary Release Authorization.
+
+الحل:
+الخطوة 1: اطلب من العميل تقديم إثبات التحويل
+يحتاجون إلى إيصال التحويل البنكي الذي يُظهر:
+- تاريخ ووقت التحويل
+- المبلغ المحوَّل
+- رقم الحساب الوجهة
+- رقم مرجع/معاملة التحويل
+
+الخطوة 2: تحقق من تفاصيل التحويل
+تحقق من:
+- أن المبلغ يطابق الرسوم المطلوبة بالضبط
+- أن رقم الحساب الوجهة صحيح (قارن مع الحساب الرسمي في الملف FIN-BANK-001)
+- أن العميل أدرج هويته أو رقم طلبه كمرجع للدفع
+
+الخطوة 3: إذا كانت التفاصيل صحيحة — تأكيد الدفع اليدوي
+تقديم نموذج FIN-301 — طلب تأكيد الدفع مع:
+- هوية العميل
+- رقم طلب الخدمة
+- إيصال التحويل البنكي مرفقاً
+سيتحقق فريق المالية يدوياً مع البنك ويؤكد خلال 4 ساعات.
+
+الخطوة 4: إذا تم التحويل إلى حساب خاطئ أو بمبلغ خاطئ
+يتطلب ذلك التعامل المباشر من مدير المالية.
+يجب على العميل الاتصال ببنكه لعكس أو تصحيح التحويل.
+مدير المالية: داخلي 2301
+
+الخطوة 5: الإفراج المؤقت عن الخدمة (الحالات العاجلة فقط)
+إذا كان لدى العميل موعد نهائي صعب، يمكن للمشرف تفويض الإفراج المؤقت عن الخدمة ريثما يتم تأكيد الدفع. يتطلب نموذج FIN-401 — تفويض الإفراج المؤقت.
+
+════════════════════════════════════════════════════════════
+PROBLEM 4 — Certificate of Employment Has Wrong Information
+المشكلة 4 — شهادة العمل تحتوي على معلومات خاطئة
+════════════════════════════════════════════════════════════
+
+PROBLEM:
+Customer received their Certificate of Employment but it contains an error — wrong job title, wrong salary amount, wrong employment start date, or wrong department name.
+
+المشكلة:
+استلم العميل شهادة عمله ولكنها تحتوي على خطأ — مسمى وظيفي خاطئ، أو مبلغ راتب خاطئ، أو تاريخ بداية عمل خاطئ، أو اسم قسم خاطئ.
+
+SOLUTION:
+Step 1: Do not let the customer use the incorrect certificate
+It is invalid and could cause problems if submitted to banks or embassies.
+Advise the customer NOT to submit it anywhere until corrected.
+
+Step 2: Identify the source of the error
+Check the employee record in HR system:
+- If system data is correct but certificate is wrong → printing/template error → IT issue
+- If system data is also wrong → data entry error → HR must update records first
+
+Step 3: For system data errors (wrong data in HR system)
+Submit HR Form HR-801 — Employee Record Correction
+Include supporting documentation (original employment contract, pay stubs)
+HR will correct records within 2 business days, then reissue certificate.
+
+Step 4: For template/printing errors (system correct, certificate wrong)
+Submit IT Form IT-301 — Document Correction Request
+Certificate reissued within 24 hours at no charge.
+
+Step 5: Collect old certificate
+The incorrect certificate must be collected and marked "CANCELLED" in the system.
+Customer must return it when collecting the corrected one.
+
+Step 6: Expedited handling
+If customer has an urgent deadline (visa appointment, bank meeting):
+Flag as URGENT on the form.
+Supervisor can authorize same-day reissuance.
+
+الحل:
+الخطوة 1: لا تدع العميل يستخدم الشهادة الخاطئة
+إنها غير صالحة ويمكن أن تسبب مشاكل إذا قُدِّمت للبنوك أو السفارات.
+انصح العميل بعدم تقديمها في أي مكان حتى يتم تصحيحها.
+
+الخطوة 2: تحديد مصدر الخطأ
+تحقق من سجل الموظف في نظام HR:
+- إذا كانت بيانات النظام صحيحة ولكن الشهادة خاطئة → خطأ في الطباعة/القالب → مشكلة IT
+- إذا كانت بيانات النظام أيضاً خاطئة → خطأ في إدخال البيانات → يجب على HR تحديث السجلات أولاً
+
+الخطوة 3: لأخطاء بيانات النظام (بيانات خاطئة في نظام HR)
+تقديم نموذج HR HR-801 — تصحيح سجل الموظف
+تضمين وثائق دعم (عقد العمل الأصلي، قسائم الراتب)
+ستصحح HR السجلات خلال يومي عمل، ثم تُعيد إصدار الشهادة.
+
+الخطوة 4: لأخطاء القالب/الطباعة (النظام صحيح، الشهادة خاطئة)
+تقديم نموذج IT IT-301 — طلب تصحيح مستند
+تُعاد الشهادة خلال 24 ساعة دون رسوم.
+
+الخطوة 5: تجميع الشهادة القديمة
+يجب تجميع الشهادة الخاطئة وتمييزها بـ "ملغاة" في النظام.
+يجب على العميل إعادتها عند استلام الشهادة المصححة.
+
+الخطوة 6: المعالجة المُسرَّعة
+إذا كان لدى العميل موعد نهائي عاجل (موعد تأشيرة، اجتماع بنكي):
+ضع علامة "عاجل" على النموذج.
+يمكن للمشرف تفويض إعادة الإصدار في نفس اليوم.
+
+════════════════════════════════════════════════════════════
+PROBLEM 5 — Customer Claims They Were Charged Twice
+المشكلة 5 — العميل يدّعي أنه تم تحصيل الرسوم منه مرتين
+════════════════════════════════════════════════════════════
+
+PROBLEM:
+Customer says they paid for a service but were charged twice — either two card transactions, two cash receipts issued, or their bank shows duplicate debit. Customer is upset and demanding a refund.
+
+المشكلة:
+يقول العميل إنه دفع مقابل خدمة ولكن تم تحصيل الرسوم منه مرتين — إما معاملتا بطاقة، أو إيصالان نقديان صادران، أو يُظهر بنكه خصماً مكرراً. العميل منزعج ويطالب بالاسترداد.
+
+SOLUTION:
+Step 1: Stay calm and acknowledge the customer's concern
+Say: "I understand this is frustrating. Let me look into this for you right away."
+قل: "أفهم أن هذا محبط. دعني أبحث في هذا الأمر فوراً."
+
+Step 2: Verify the duplicate charge
+In the payment system, search by:
+- Customer National ID
+- Date of transaction
+- Amount
+
+Look for two identical or near-identical charges on the same day.
+
+Step 3: If duplicate charge is confirmed
+- Immediately inform the customer the duplicate is confirmed
+- Process refund Form FIN-201 — Payment Dispute (mark as CONFIRMED DUPLICATE)
+- Refund timeline:
+  * Card payment: 7-14 business days (bank processing)
+  * Cash: 3-5 business days
+  * Online: 3-5 business days
+- Give customer a refund reference number
+- Apologize on behalf of the company
+
+Step 4: If only one charge found in system
+- Show customer the single charge record
+- Ask customer to provide bank statement showing both charges
+- If bank statement shows duplicate not in our system:
+  Submit FIN-501 — External Duplicate Charge Investigation
+  Finance contacts the payment gateway to investigate
+  Resolution within 5 business days
+
+Step 5: Compensation for confirmed duplicate
+Per compensation policy, customer is entitled to:
+- Full refund of duplicate amount
+- Expedited processing on their next request (free)
+- Written apology if requested
+
+Document all actions taken in Form SQ-401 — Compensation Log.
+
+الحل:
+الخطوة 1: ابق هادئاً واعترف بقلق العميل
+قل: "أفهم أن هذا محبط. دعني أبحث في هذا الأمر فوراً."
+
+الخطوة 2: التحقق من الرسوم المكررة
+في نظام الدفع، ابحث عن طريق:
+- بطاقة الهوية الوطنية للعميل
+- تاريخ المعاملة
+- المبلغ
+
+ابحث عن رسومين متطابقتين أو شبه متطابقتين في نفس اليوم.
+
+الخطوة 3: إذا تم تأكيد الرسوم المكررة
+- أبلغ العميل فوراً بتأكيد الازدواجية
+- معالجة نموذج الاسترداد FIN-201 — نزاع الدفع (وضع علامة "ازدواجية مؤكدة")
+- جدول الاسترداد:
+  * دفع بالبطاقة: 7-14 يوم عمل (معالجة البنك)
+  * نقداً: 3-5 أيام عمل
+  * إلكتروني: 3-5 أيام عمل
+- أعطِ العميل رقم مرجع الاسترداد
+- اعتذر نيابةً عن الشركة
+
+الخطوة 4: إذا وُجدت رسوم واحدة فقط في النظام
+- أرِ العميل سجل الرسوم الواحدة
+- اطلب من العميل تقديم كشف حساب بنكي يُظهر كلا الرسومين
+- إذا أظهر كشف الحساب البنكي ازدواجية غير موجودة في نظامنا:
+  تقديم FIN-501 — تحقيق في الرسوم الخارجية المكررة
+  تتصل المالية ببوابة الدفع للتحقيق
+  الحل خلال 5 أيام عمل
+
+الخطوة 5: التعويض عن الازدواجية المؤكدة
+وفق سياسة التعويض، يحق للعميل:
+- استرداد كامل للمبلغ المكرر
+- معالجة مُسرَّعة لطلبه التالي (مجاناً)
+- خطاب اعتذار إذا طُلب
+
+وثّق جميع الإجراءات المتخذة في نموذج SQ-401 — سجل التعويض.

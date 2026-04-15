@@ -1,0 +1,177 @@
+CUSTOMER COMPLAINTS & ESCALATIONS MANUAL
+Service Quality Department
+Version 2.0
+
+دليل شكاوى العملاء والتصعيد
+قسم جودة الخدمة
+الإصدار 2.0
+
+════════════════════════════════════════════════════════════
+SECTION 1 — COMPLAINT REGISTRATION / تسجيل الشكوى
+════════════════════════════════════════════════════════════
+
+1.1 How to Register a Complaint
+كيفية تسجيل شكوى
+
+A customer complaint must be registered whenever a customer:
+يجب تسجيل شكوى العميل عندما يقوم العميل بما يلي:
+- Expresses dissatisfaction with a service / يُعبّر عن عدم الرضا عن خدمة
+- Reports an error in their documents / يُبلّغ عن خطأ في مستنداته
+- Was charged incorrectly / تم تحصيل رسوم منه بشكل غير صحيح
+- Waited longer than the stated processing time / انتظر أطول من وقت المعالجة المحدد
+- Was treated poorly by staff / عومل بشكل سيء من قِبَل الموظف
+
+Registration channels / قنوات التسجيل:
+1. In person at any service desk / شخصياً عند أي مكتب خدمة
+2. Phone: 19XXX (Option 3) / هاتف: 19XXX (الخيار 3)
+3. Email: complaints@company-cs.com / البريد الإلكتروني: complaints@company-cs.com
+4. Portal: portal.company-cs.com/complaints / البوابة: portal.company-cs.com/complaints
+5. WhatsApp/Telegram bot: type /complaint / بوت WhatsApp/Telegram: اكتب /complaint
+
+Information needed / المعلومات المطلوبة:
+- Customer full name / الاسم الكامل للعميل
+- National ID / بطاقة الهوية الوطنية
+- Contact phone and email / هاتف التواصل والبريد الإلكتروني
+- Service or request number involved / رقم الخدمة أو الطلب المعني
+- Clear description of the complaint / وصف واضح للشكوى
+- Desired resolution / الحل المطلوب
+
+────────────────────────────────────────────────────────────
+
+1.2 Complaint Reference Number
+رقم مرجع الشكوى
+
+Every registered complaint receives a unique reference number.
+كل شكوى مسجلة تحصل على رقم مرجعي فريد.
+
+Format: CMP-YYYY-XXXXX (e.g., CMP-2025-00123)
+التنسيق: CMP-YYYY-XXXXX (مثال: CMP-2025-00123)
+
+Customer can track complaint status using this number:
+يمكن للعميل تتبع حالة الشكوى باستخدام هذا الرقم:
+- Portal: "Track My Complaint" section / البوابة: قسم "تتبع شكواي"
+- Phone with reference number / هاتف برقم المرجع
+
+════════════════════════════════════════════════════════════
+SECTION 2 — RESPONSE TIMEFRAMES / الإطارات الزمنية للاستجابة
+════════════════════════════════════════════════════════════
+
+2.1 Complaint Priority Levels
+مستويات أولوية الشكوى
+
+URGENT (Response within 4 hours) / عاجل (استجابة خلال 4 ساعات):
+- Customer missing a legal deadline due to our error
+  عميل يفوّت موعداً قانونياً بسبب خطأنا
+- Financial harm to customer / ضرر مالي للعميل
+- Medical emergency related to insurance coverage
+  طارئ طبي يتعلق بالتغطية التأمينية
+
+HIGH (Response within 1 business day) / عالي (استجابة خلال يوم عمل):
+- Document error that blocks customer / خطأ في المستند يعيق العميل
+- Payment charged twice / رسوم مزدوجة
+- Service waiting beyond double the stated time
+  الخدمة في الانتظار لأكثر من ضعف الوقت المحدد
+
+STANDARD (Response within 3 business days) / عادي (استجابة خلال 3 أيام عمل):
+- General dissatisfaction / عدم رضا عام
+- Suggestion for improvement / اقتراح للتحسين
+- Staff behavior complaint / شكوى سلوك موظف
+
+────────────────────────────────────────────────────────────
+
+2.2 Resolution Process / عملية الحل
+
+Step 1: Complaint received and logged / استلام الشكوى وتسجيلها
+Step 2: Acknowledgment sent to customer within 1 hour
+         إرسال إشعار للعميل خلال ساعة واحدة
+Step 3: Assigned to relevant department head
+         تخصيصها لرئيس القسم المعني
+Step 4: Investigation and proposed resolution
+         التحقيق والحل المقترح
+Step 5: Customer contacted with resolution
+         التواصل مع العميل بالحل
+Step 6: Customer confirms satisfaction or escalates
+         العميل يؤكد الرضا أو يصعّد
+Step 7: Complaint closed and satisfaction survey sent
+         إغلاق الشكوى وإرسال استبيان الرضا
+
+════════════════════════════════════════════════════════════
+SECTION 3 — ESCALATION MATRIX / مصفوفة التصعيد
+════════════════════════════════════════════════════════════
+
+3.1 When to Escalate / متى يتم التصعيد
+
+Escalate to Supervisor when / التصعيد إلى المشرف عندما:
+- Customer is not satisfied with initial response
+  العميل غير راضٍ عن الرد الأولي
+- Complaint involves policy exception request
+  الشكوى تتضمن طلب استثناء من السياسة
+- Resolution requires spending above 500 EGP
+  الحل يتطلب إنفاق أكثر من 500 جنيه
+
+Escalate to Department Manager when / التصعيد إلى مدير القسم عندما:
+- Supervisor cannot resolve within timeframe
+  المشرف لا يستطيع الحل في الإطار الزمني
+- Repeat complaint from same customer (3+ times)
+  شكوى متكررة من نفس العميل (3 مرات أو أكثر)
+- Complaint involves staff misconduct
+  الشكوى تتضمن سوء سلوك موظف
+
+Escalate to General Manager when / التصعيد إلى المدير العام عندما:
+- Legal threat from customer / تهديد قانوني من العميل
+- Media involvement / تورط وسائل الإعلام
+- Complaint unresolved for 10+ business days
+  شكوى لم تُحلّ لأكثر من 10 أيام عمل
+
+────────────────────────────────────────────────────────────
+
+3.2 Escalation Contact List / قائمة جهات الاتصال للتصعيد
+
+Document Services / خدمات المستندات:
+Supervisor: Ext. 2100 / المشرف: داخلي 2100
+Manager: Ext. 2101 / المدير: داخلي 2101
+
+HR Services / خدمات HR:
+Supervisor: Ext. 2200 / المشرف: داخلي 2200
+Manager: Ext. 2201 / المدير: داخلي 2201
+
+Finance / المالية:
+Supervisor: Ext. 2300 / المشرف: داخلي 2300
+Manager: Ext. 2301 / المدير: داخلي 2301
+
+IT/Portal / تقنية المعلومات/البوابة:
+Supervisor: Ext. 2400 / المشرف: داخلي 2400
+Manager: Ext. 2401 / المدير: داخلي 2401
+
+════════════════════════════════════════════════════════════
+SECTION 4 — COMPENSATION POLICY / سياسة التعويض
+════════════════════════════════════════════════════════════
+
+4.1 Standard Compensation Guidelines
+إرشادات التعويض القياسية
+
+Staff are authorized to offer the following without manager approval:
+يُخوَّل الموظفون لتقديم ما يلي دون موافقة المدير:
+- Full refund of fees paid for the affected service
+  استرداد كامل للرسوم المدفوعة عن الخدمة المتأثرة
+- Free expedited processing on next request
+  معالجة مُسرَّعة مجانية عند الطلب التالي
+- Written apology letter / خطاب اعتذار رسمي
+
+Requires manager approval / يتطلب موافقة المدير:
+- Compensation above 500 EGP / تعويض أكثر من 500 جنيه
+- Free services beyond next request / خدمات مجانية تتجاوز الطلب التالي
+- Any form of gift or voucher / أي شكل من أشكال الهدايا أو القسائم
+
+4.2 Documentation of Compensation
+توثيق التعويض
+
+All compensation must be documented in:
+يجب توثيق جميع التعويضات في:
+1. Customer complaint file / ملف شكوى العميل
+2. Compensation log (Form SQ-401) / سجل التعويض (نموذج SQ-401)
+3. Customer signature acknowledging resolution
+   توقيع العميل على إقرار الحل
+
+Compensation offered without proper documentation is a policy violation.
+التعويض المُقدَّم بدون توثيق مناسب يُعدّ انتهاكاً للسياسة.

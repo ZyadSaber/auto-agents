@@ -6,7 +6,6 @@ const jwt = require("jsonwebtoken");
 const { rateLimit } = require("express-rate-limit");
 const { Readable } = require("stream");
 const multer = require("multer");
-const FormData = require("form-data");
 const pty = require("node-pty");
 const { WebSocketServer } = require("ws");
 const http = require("http");
@@ -344,26 +343,33 @@ app.post(
   "/api/docs/upload",
   authenticateToken,
   uploadLimiter,
-  upload.single("file"),
+  upload.array("files", 20),
   async (req, res) => {
     try {
-      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      if (!req.files || req.files.length === 0)
+        return res.status(400).json({ error: "No files uploaded" });
 
-      const form = new FormData();
-      form.append("file", req.file.buffer, req.file.originalname);
+      const results = await Promise.all(
+        req.files.map(async (file) => {
+          const form = new globalThis.FormData();
+          form.append(
+            "file",
+            new Blob([file.buffer], { type: file.mimetype || "application/octet-stream" }),
+            file.originalname,
+          );
+          const response = await fetch(`${DOCS_AGENT_URL}/upload`, {
+            method: "POST",
+            headers: { "X-API-Key": AGENT_API_KEY },
+            body: form,
+          });
+          const data = await response.json();
+          if (!response.ok)
+            throw new Error(data.detail || `Upload failed for ${file.originalname}`);
+          return data;
+        }),
+      );
 
-      const response = await fetch(`${DOCS_AGENT_URL}/upload`, {
-        method: "POST",
-        headers: {
-          "X-API-Key": AGENT_API_KEY,
-          ...form.getHeaders(),
-        },
-        body: form,
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Upload failed");
-      res.json(data);
+      res.json({ uploaded: results });
     } catch (err) {
       proxyError(res, "upload doc", err);
     }

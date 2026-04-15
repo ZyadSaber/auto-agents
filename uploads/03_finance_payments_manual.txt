@@ -1,0 +1,161 @@
+FINANCE & PAYMENTS SERVICES MANUAL
+Customer Finance Department Guide
+Version 1.5
+
+دليل خدمات المالية والمدفوعات
+دليل قسم المالية للعملاء
+الإصدار 1.5
+
+════════════════════════════════════════════════════════════
+SECTION 1 — INVOICES & RECEIPTS / الفواتير والإيصالات
+════════════════════════════════════════════════════════════
+
+1.1 Requesting a Duplicate Invoice
+طلب نسخة مكررة من الفاتورة
+
+If a customer has lost their invoice or needs an official copy:
+إذا فقد عميل فاتورته أو يحتاج إلى نسخة رسمية:
+
+Requirements / المتطلبات:
+- Customer name or account number / اسم العميل أو رقم الحساب
+- Approximate date of transaction / التاريخ التقريبي للمعاملة
+- Transaction amount (approximate is acceptable) / مبلغ المعاملة (التقريبي مقبول)
+- Valid ID / هوية سارية
+
+Process / الإجراء:
+1. Staff searches system using customer ID + date range
+   يبحث الموظف في النظام باستخدام هوية العميل + نطاق التاريخ
+2. Invoice located and printed with DUPLICATE stamp
+   يُحدَّد موقع الفاتورة وتُطبع بختم "نسخة مكررة"
+3. Customer signs acknowledgment log
+   يوقع العميل على سجل الإقرار
+4. Fee: 10 EGP per invoice / الرسوم: 10 جنيه لكل فاتورة
+5. Available for transactions up to 7 years old
+   متاح للمعاملات حتى 7 سنوات
+
+Digital copies: Available free on customer portal
+النسخ الرقمية: متاحة مجاناً على بوابة العميل
+
+────────────────────────────────────────────────────────────
+
+1.2 Payment Receipt Reissuance
+إعادة إصدار إيصال الدفع
+
+For cash payments / للمدفوعات النقدية:
+- Original cashier must be identified / يجب تحديد أمين الصندوق الأصلي
+- End-of-day cash report used to verify / يستخدم تقرير نهاية اليوم للتحقق
+- Takes 1 business day / يستغرق يوم عمل واحد
+
+For online/card payments / للمدفوعات الإلكترونية/البطاقة:
+- Available immediately on portal / متاح فوراً على البوابة
+- Email resend available / إعادة إرسال البريد الإلكتروني متاحة
+
+════════════════════════════════════════════════════════════
+SECTION 2 — REFUNDS & DISPUTES / المبالغ المستردة والنزاعات
+════════════════════════════════════════════════════════════
+
+2.1 Refund Policy / سياسة الاسترداد
+
+Eligible for refund / مؤهل للاسترداد:
+- Service not delivered / الخدمة لم تُقدَّم
+- Duplicate charge / رسوم مكررة
+- System error causing overcharge / خطأ في النظام أدى إلى الإفراط في الشحن
+- Service cancelled within 24 hours / الخدمة ملغاة خلال 24 ساعة
+
+NOT eligible for refund / غير مؤهل للاسترداد:
+- Completed and delivered services / الخدمات المكتملة والمُسلَّمة
+- Customer changed their mind after delivery / العميل غيّر رأيه بعد التسليم
+- Services cancelled after 24 hours without valid reason
+  الخدمات الملغاة بعد 24 ساعة بدون سبب مشروع
+
+Refund processing time / وقت معالجة الاسترداد:
+- Cash: 3-5 business days / نقداً: 3-5 أيام عمل
+- Bank transfer: 5-7 business days / تحويل بنكي: 5-7 أيام عمل
+- Card: 7-14 business days (depends on bank) / بطاقة: 7-14 يوم عمل (يعتمد على البنك)
+
+────────────────────────────────────────────────────────────
+
+2.2 Payment Dispute Process
+إجراء نزاع الدفع
+
+Step 1: Customer submits Finance Form FIN-201 — Payment Dispute
+الخطوة 1: يقدم العميل نموذج FIN-201 — نزاع الدفع
+
+Step 2: Finance team investigates within 3 business days
+الخطوة 2: يحقق فريق المالية خلال 3 أيام عمل
+
+Step 3: Customer notified of decision via phone and email
+الخطوة 3: يُبلَّغ العميل بالقرار عبر الهاتف والبريد الإلكتروني
+
+Step 4: If approved, refund processed per refund timeline above
+الخطوة 4: إذا تمت الموافقة، يُعالَج الاسترداد وفق الجدول الزمني أعلاه
+
+Step 5: If rejected, customer may escalate to Finance Manager
+الخطوة 5: إذا رُفض، يمكن للعميل التصعيد إلى مدير المالية
+
+Escalation contact / جهة الاتصال للتصعيد:
+Email: finance.manager@company.com
+Phone: Extension 2200
+
+════════════════════════════════════════════════════════════
+SECTION 3 — BANK TRANSFER & PAYMENT METHODS / التحويل البنكي وطرق الدفع
+════════════════════════════════════════════════════════════
+
+3.1 Accepted Payment Methods / طرق الدفع المقبولة
+
+In person / شخصياً:
+- Cash (EGP only) / نقداً (جنيه مصري فقط)
+- Visa / Mastercard debit or credit / بطاقة Visa / Mastercard خصم أو ائتمان
+- Meeza card / بطاقة ميزة
+
+Online / إلكترونياً:
+- Portal payment gateway / بوابة الدفع الإلكتروني
+- Fawry (reference number provided) / فوري (يُقدَّم رقم مرجعي)
+- Bank transfer (account details below) / تحويل بنكي (تفاصيل الحساب أدناه)
+
+Bank Transfer Details / تفاصيل التحويل البنكي:
+Bank: National Bank of Egypt / البنك: البنك الأهلي المصري
+Account Name: [Company Name] / اسم الحساب: [اسم الشركة]
+Account Number: XXXX-XXXX-XXXX / رقم الحساب: XXXX-XXXX-XXXX
+Branch: Main Branch / الفرع: الفرع الرئيسي
+
+IMPORTANT: Always include your customer ID or request number as payment reference
+مهم: قم دائماً بتضمين رقم هوية العميل أو رقم الطلب كمرجع للدفع
+
+────────────────────────────────────────────────────────────
+
+3.2 Payment Confirmation
+تأكيد الدفع
+
+Cash: Immediate receipt issued / نقداً: إيصال فوري
+Card: Receipt printed immediately / بطاقة: إيصال مطبوع فوراً
+Online portal: Confirmation email within 5 minutes / البوابة الإلكترونية: بريد تأكيد خلال 5 دقائق
+Fawry: System updates within 2 hours / فوري: يتحدث النظام خلال ساعتين
+Bank transfer: 24-48 hours for system to reflect / تحويل بنكي: 24-48 ساعة لتحديث النظام
+
+If payment not reflected after 48 hours:
+إذا لم يُعكس الدفع بعد 48 ساعة:
+- Contact finance team with bank transfer receipt
+  تواصل مع فريق المالية مع إيصال التحويل البنكي
+- Form FIN-301 — Payment Confirmation Request
+  نموذج FIN-301 — طلب تأكيد الدفع
+
+════════════════════════════════════════════════════════════
+SECTION 4 — TAX DOCUMENTS / المستندات الضريبية
+════════════════════════════════════════════════════════════
+
+4.1 Tax Invoice / الفاتورة الضريبية
+
+All services above 500 EGP automatically generate a tax invoice.
+جميع الخدمات التي تزيد عن 500 جنيه تُولّد فاتورة ضريبية تلقائياً.
+
+Tax invoice includes / تتضمن الفاتورة الضريبية:
+- Tax registration number / رقم التسجيل الضريبي
+- VAT breakdown (14%) / تفصيل ضريبة القيمة المضافة (14%)
+- QR code for verification / رمز QR للتحقق
+
+For tax invoices below 500 EGP: request at time of payment
+للفواتير الضريبية أقل من 500 جنيه: اطلب عند الدفع
+
+Digital tax invoices: Available on portal within 24 hours of payment
+الفواتير الضريبية الرقمية: متاحة على البوابة خلال 24 ساعة من الدفع

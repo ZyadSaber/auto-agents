@@ -1,0 +1,146 @@
+DOCUMENT SERVICES MANUAL
+Customer Service Department
+Version 1.0
+
+دليل خدمات المستندات
+قسم خدمة العملاء
+الإصدار 1.0
+
+════════════════════════════════════════════════════════════
+SECTION 1 — OFFICIAL DOCUMENT REQUESTS / طلبات المستندات الرسمية
+════════════════════════════════════════════════════════════
+
+1.1 How to Request a Certificate of Employment
+قسم شهادة العمل
+
+To request an official Certificate of Employment, the customer must:
+1. Submit a completed Form CS-101 (available at the front desk or on the portal)
+2. Provide a valid national ID or passport copy
+3. Specify the purpose of the certificate (bank loan, visa application, personal use)
+4. Processing time: 2-3 business days
+5. Fee: 50 EGP for standard, 150 EGP for urgent (same day)
+6. Collection: in person with original ID, or email delivery upon request
+
+للحصول على شهادة عمل رسمية، يجب على العميل:
+1. تقديم نموذج CS-101 مكتمل (متوفر في مكتب الاستقبال أو البوابة الإلكترونية)
+2. تقديم صورة من بطاقة الهوية الوطنية أو جواز السفر
+3. تحديد الغرض من الشهادة (قرض بنكي، تأشيرة، استخدام شخصي)
+4. وقت المعالجة: 2-3 أيام عمل
+5. الرسوم: 50 جنيه للعادي، 150 جنيه للعاجل (نفس اليوم)
+6. الاستلام: شخصياً بالهوية الأصلية، أو عبر البريد الإلكتروني عند الطلب
+
+────────────────────────────────────────────────────────────
+
+1.2 How to Request Official Financial Statements
+طلب كشوف الحساب الرسمية
+
+Requirements / المتطلبات:
+- Valid ID / هوية سارية
+- Account number / رقم الحساب
+- Specify date range (maximum 12 months per request) / تحديد الفترة الزمنية
+- Form CS-205 / نموذج CS-205
+
+Processing time: 1 business day / وقت المعالجة: يوم عمل واحد
+Fee: Free for last 3 months / مجاني لآخر 3 أشهر
+     25 EGP per month beyond 3 months / 25 جنيه لكل شهر إضافي
+
+Important note: Statements older than 5 years require a special archival request (Form CS-301) and take up to 10 business days.
+ملاحظة مهمة: الكشوفات الأقدم من 5 سنوات تتطلب طلب أرشفة خاص (نموذج CS-301) وتستغرق حتى 10 أيام عمل.
+
+════════════════════════════════════════════════════════════
+SECTION 2 — DOCUMENT AUTHENTICATION / توثيق المستندات
+════════════════════════════════════════════════════════════
+
+2.1 Document Notarization Process
+إجراء التوثيق الرسمي
+
+Step 1: Bring the original document and two photocopies
+الخطوة 1: إحضار المستند الأصلي وصورتين منه
+
+Step 2: Complete Form CS-402 — Document Authentication Request
+الخطوة 2: ملء نموذج CS-402 — طلب توثيق مستند
+
+Step 3: Present valid national ID
+الخطوة 3: تقديم بطاقة هوية وطنية سارية
+
+Step 4: Pay the notarization fee
+الخطوة 4: دفع رسوم التوثيق
+  - Single page: 30 EGP / صفحة واحدة: 30 جنيه
+  - 2-5 pages: 75 EGP / 2-5 صفحات: 75 جنيه
+  - 6-10 pages: 120 EGP / 6-10 صفحات: 120 جنيه
+  - Over 10 pages: 15 EGP per page / أكثر من 10 صفحات: 15 جنيه للصفحة
+
+Step 5: Collect authenticated document within 24 hours
+الخطوة 5: استلام المستند الموثق خلال 24 ساعة
+
+2.2 Accepted Document Types for Authentication
+أنواع المستندات المقبولة للتوثيق
+
+- Birth certificates / شهادات الميلاد
+- Marriage certificates / عقود الزواج
+- Educational certificates and diplomas / الشهادات والدبلومات التعليمية
+- Property deeds / سندات الملكية
+- Commercial contracts / العقود التجارية
+- Power of attorney / توكيلات رسمية
+
+NOT accepted / غير مقبول:
+- Medical prescriptions / الوصفات الطبية
+- Handwritten personal letters / الرسائل الشخصية المكتوبة بخط اليد
+- Documents with visible alterations / المستندات التي تحتوي على تعديلات ظاهرة
+
+════════════════════════════════════════════════════════════
+SECTION 3 — LOST OR DAMAGED DOCUMENTS / المستندات المفقودة أو التالفة
+════════════════════════════════════════════════════════════
+
+3.1 Procedure for Lost Documents
+إجراء المستندات المفقودة
+
+If a customer reports a lost document issued by our office:
+إذا أبلغ عميل عن فقدان مستند صادر من مكتبنا:
+
+1. Customer files a police report (required for all official documents)
+   يقدم العميل بلاغاً للشرطة (مطلوب لجميع المستندات الرسمية)
+
+2. Customer submits Form CS-501 — Lost Document Declaration
+   يقدم العميل نموذج CS-501 — إقرار مستند مفقود
+
+3. Staff verifies original issuance in the system using customer ID
+   يتحقق الموظف من الإصدار الأصلي في النظام باستخدام هوية العميل
+
+4. Replacement issued within 3-5 business days
+   يصدر البديل خلال 3-5 أيام عمل
+
+5. Fee: 100 EGP replacement fee + original document fee
+   الرسوم: 100 جنيه رسوم استبدال + رسوم المستند الأصلي
+
+3.2 Damaged Document Replacement
+استبدال المستندات التالفة
+
+Customer must bring the damaged document (even if partially damaged).
+يجب على العميل إحضار المستند التالف (حتى لو كان تالفاً جزئياً).
+
+Replacement fee: 75 EGP / رسوم الاستبدال: 75 جنيه
+Processing: Same as original document type / المعالجة: نفس نوع المستند الأصلي
+
+════════════════════════════════════════════════════════════
+SECTION 4 — DIGITAL DOCUMENT PORTAL / بوابة المستندات الرقمية
+════════════════════════════════════════════════════════════
+
+4.1 Portal Access / الوصول إلى البوابة
+Website: portal.company-cs.com
+Username: National ID number / رقم بطاقة الهوية الوطنية
+Default password: First 4 letters of name + birth year
+كلمة المرور الافتراضية: أول 4 أحرف من الاسم + سنة الميلاد
+
+4.2 Available Digital Services / الخدمات الرقمية المتاحة
+- Download issued documents (PDF) / تنزيل المستندات الصادرة
+- Track request status / متابعة حالة الطلب
+- Submit new requests / تقديم طلبات جديدة
+- Update contact information / تحديث معلومات الاتصال
+- Pay fees online / دفع الرسوم إلكترونياً
+
+4.3 Portal Technical Support Hours / ساعات الدعم التقني للبوابة
+Sunday - Thursday: 8:00 AM - 8:00 PM
+الأحد - الخميس: 8:00 صباحاً - 8:00 مساءً
+Phone: 19XXX / هاتف: 19XXX
+Email: portal-support@company-cs.com

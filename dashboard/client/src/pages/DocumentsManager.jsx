@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { Files, Upload, Trash2, FileText, AlertCircle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
@@ -13,6 +13,7 @@ function DocumentsManager({ token }) {
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState("");
   const [success,   setSuccess]   = useState("");
+  const docCountRef = useRef(0);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -21,6 +22,7 @@ function DocumentsManager({ token }) {
     try {
       const res = await axios.get("/api/docs", { headers });
       setDocuments(res.data);
+      docCountRef.current = res.data.length;
     } catch { setError("Could not fetch documents."); }
     finally { setLoading(false); }
   };
@@ -28,20 +30,36 @@ function DocumentsManager({ token }) {
   useEffect(() => { fetchDocs(); }, []);
 
   const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
     setUploading(true); setError(""); setSuccess("");
     const formData = new FormData();
-    formData.append("file", file);
+    files.forEach((f) => formData.append("files", f));
     try {
       await axios.post("/api/docs/upload", formData, {
         headers: { ...headers, "Content-Type": "multipart/form-data" },
       });
-      setSuccess(`${file.name} uploaded successfully!`);
-      fetchDocs();
+      const label = files.length === 1 ? files[0].name : `${files.length} files`;
+      setSuccess(`${label} uploaded — indexing in background, refreshing shortly...`);
+      // Ingestion (Ollama embedding) runs as a background task on the agent side.
+      // Poll every 3 s until the doc count grows, or give up after 30 s (10 attempts).
+      const before = docCountRef.current;
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        await fetchDocs();
+        if (docCountRef.current > before || attempts >= 10) {
+          clearInterval(poll);
+          if (docCountRef.current > before) setSuccess(`${label} indexed successfully!`);
+          else setSuccess(`${label} uploaded. If docs don't appear, click refresh in a moment.`);
+        }
+      }, 3000);
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to upload document.");
-    } finally { setUploading(false); }
+      setError(err.response?.data?.error || "Failed to upload documents.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const handleDelete = async (filename) => {
@@ -80,7 +98,7 @@ function DocumentsManager({ token }) {
               </span>
             </Button>
             <input type="file" onChange={handleUpload} className="hidden"
-              accept=".pdf,.docx,.txt,.xlsx,.xls,.csv" />
+              accept=".pdf,.docx,.txt,.xlsx,.xls,.csv" multiple />
           </label>
         </div>
       </header>

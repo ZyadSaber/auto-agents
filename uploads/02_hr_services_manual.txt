@@ -1,0 +1,145 @@
+HUMAN RESOURCES SERVICES MANUAL
+Employee & Customer HR Document Guide
+Version 2.0
+
+دليل خدمات الموارد البشرية
+دليل مستندات الموظفين والعملاء
+الإصدار 2.0
+
+════════════════════════════════════════════════════════════
+SECTION 1 — SALARY & PAYROLL DOCUMENTS / مستندات الرواتب والمرتبات
+════════════════════════════════════════════════════════════
+
+1.1 Salary Certificate / شهادة الراتب
+
+Purpose: Required by banks, embassies, rental agencies
+الغرض: مطلوبة من البنوك والسفارات وشركات الإيجار
+
+How to request / كيفية الطلب:
+- Submit HR Form HR-101 / تقديم نموذج HR-101
+- Specify requesting party (e.g., "For Cairo Bank") / تحديد الجهة الطالبة
+- Must be requested by the employee only / يجب أن يطلبها الموظف شخصياً
+- Processing: 1 business day / المعالجة: يوم عمل واحد
+- Valid for: 3 months from issue date / صلاحية: 3 أشهر من تاريخ الإصدار
+- Language options: Arabic, English, or both / خيارات اللغة: عربي، إنجليزي، أو كلاهما
+
+Salary certificate includes / تتضمن شهادة الراتب:
+- Employee full name / الاسم الكامل للموظف
+- Job title / المسمى الوظيفي
+- Department / القسم
+- Basic salary / الراتب الأساسي
+- Total salary including allowances / إجمالي الراتب شاملاً البدلات
+- Employment start date / تاريخ بداية العمل
+- Company stamp and authorized signature / ختم الشركة والتوقيع المفوض
+
+────────────────────────────────────────────────────────────
+
+1.2 Payslip Requests / طلبات قسيمة الراتب
+
+Current month payslip: Available on HR portal same day of salary payment
+قسيمة الراتب للشهر الحالي: متاحة على بوابة HR في نفس يوم صرف الراتب
+
+Previous months (up to 24 months): Available on portal instantly
+الأشهر السابقة (حتى 24 شهراً): متاحة على البوابة فوراً
+
+Older than 24 months: Submit Form HR-205, takes 3 business days
+أقدم من 24 شهراً: تقديم نموذج HR-205، تستغرق 3 أيام عمل
+
+════════════════════════════════════════════════════════════
+SECTION 2 — LEAVE & ATTENDANCE DOCUMENTS / مستندات الإجازات والحضور
+════════════════════════════════════════════════════════════
+
+2.1 Annual Leave Balance Certificate
+شهادة رصيد الإجازة السنوية
+
+Available instantly from HR portal under "My Documents"
+متاح فوراً من بوابة HR تحت "مستنداتي"
+
+Or request from HR directly with Form HR-301
+أو طلب من HR مباشرة بنموذج HR-301
+
+Leave types included / أنواع الإجازات المدرجة:
+- Annual leave / الإجازة السنوية
+- Sick leave used / الإجازة المرضية المستخدمة
+- Emergency leave / إجازة الطوارئ
+- Unpaid leave / الإجازة غير مدفوعة الأجر
+
+────────────────────────────────────────────────────────────
+
+2.2 Attendance Report
+تقرير الحضور
+
+Individual attendance reports can be requested for:
+يمكن طلب تقارير الحضور الفردية لـ:
+- Visa applications / طلبات التأشيرة
+- Bank requirements / متطلبات البنك
+- Personal records / السجلات الشخصية
+
+Form required: HR-402
+النموذج المطلوب: HR-402
+Processing time: 2 business days
+وقت المعالجة: يومان عمل
+Maximum period: 12 months per request
+الفترة القصوى: 12 شهراً لكل طلب
+
+════════════════════════════════════════════════════════════
+SECTION 3 — EMPLOYMENT VERIFICATION / التحقق من التوظيف
+════════════════════════════════════════════════════════════
+
+3.1 Experience Letter (End of Service)
+خطاب الخبرة (نهاية الخدمة)
+
+Issued to employees who have completed their service.
+تصدر للموظفين الذين أتموا خدمتهم.
+
+Contents / المحتويات:
+- Full employment period / فترة التوظيف الكاملة
+- Positions held / المناصب التي شغلها
+- Responsibilities summary / ملخص المسؤوليات
+- Reason for leaving (optional, by mutual agreement) / سبب المغادرة (اختياري، بالاتفاق المتبادل)
+
+Request process / إجراء الطلب:
+1. Submit HR-501 within 30 days of last working day
+   تقديم HR-501 خلال 30 يوماً من آخر يوم عمل
+2. Clearance certificate required / مطلوب شهادة براءة ذمة
+3. Processing: 5 business days / المعالجة: 5 أيام عمل
+4. Fee: Free / الرسوم: مجاناً
+
+3.2 Employment Verification for Third Parties
+التحقق من التوظيف للأطراف الثالثة
+
+When banks or organizations contact HR to verify an employee:
+عندما تتصل البنوك أو المنظمات بـ HR للتحقق من موظف:
+
+- Verbal confirmation: provided same day by phone / التأكيد الشفهي: يُقدَّم في نفس اليوم عبر الهاتف
+- Written confirmation: requires employee written consent / التأكيد الكتابي: يتطلب موافقة الموظف الكتابية
+- Only confirms: name, title, employment status, start date / يؤكد فقط: الاسم، المسمى الوظيفي، حالة التوظيف، تاريخ البدء
+- Salary information shared ONLY with employee's written consent / معلومات الراتب تُشارك فقط بموافقة كتابية من الموظف
+
+════════════════════════════════════════════════════════════
+SECTION 4 — MEDICAL & INSURANCE DOCUMENTS / المستندات الطبية والتأمين
+════════════════════════════════════════════════════════════
+
+4.1 Medical Insurance Card Replacement
+استبدال بطاقة التأمين الطبي
+
+Lost card / البطاقة المفقودة:
+- Report to HR immediately / الإبلاغ فوراً إلى HR
+- Submit Form HR-601 / تقديم نموذج HR-601
+- Replacement issued within 5 business days / البديل يصدر خلال 5 أيام عمل
+- Fee: 25 EGP / الرسوم: 25 جنيه
+
+4.2 Insurance Coverage Letter
+خطاب التغطية التأمينية
+
+Required for hospital admission or major procedures.
+مطلوب لدخول المستشفى أو الإجراءات الكبرى.
+
+Emergency: Call HR hotline 19XXX — letter issued within 2 hours
+الطوارئ: اتصل بخط HR الساخن 19XXX — يصدر الخطاب خلال ساعتين
+
+Planned procedure: Submit HR-701 at least 3 days before
+الإجراء المخطط: تقديم HR-701 قبل 3 أيام على الأقل
+
+Coverage limits per the insurance policy document (available on HR portal under "Insurance Policy")
+حدود التغطية وفقاً لوثيقة التأمين (متاحة على بوابة HR تحت "بوليصة التأمين")

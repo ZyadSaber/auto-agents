@@ -1,0 +1,169 @@
+IT SUPPORT & PORTAL SERVICES MANUAL
+Technical Support Guide for Staff and Customers
+Version 3.0
+
+دليل دعم تقنية المعلومات وخدمات البوابة
+دليل الدعم التقني للموظفين والعملاء
+الإصدار 3.0
+
+════════════════════════════════════════════════════════════
+SECTION 1 — PORTAL LOGIN ISSUES / مشاكل تسجيل الدخول للبوابة
+════════════════════════════════════════════════════════════
+
+1.1 Forgot Password / نسيت كلمة المرور
+
+Self-service reset (fastest) / إعادة التعيين الذاتية (الأسرع):
+1. Go to portal.company-cs.com / اذهب إلى portal.company-cs.com
+2. Click "Forgot Password" / انقر على "نسيت كلمة المرور"
+3. Enter your National ID number / أدخل رقم بطاقة الهوية الوطنية
+4. OTP sent to registered mobile number / يُرسَل رمز OTP إلى رقم الجوال المسجل
+5. OTP valid for 5 minutes only / رمز OTP صالح لمدة 5 دقائق فقط
+6. Set new password: minimum 8 characters, must include number and special character
+   تعيين كلمة مرور جديدة: 8 أحرف على الأقل، يجب أن تتضمن رقماً وحرفاً خاصاً
+
+If mobile number is no longer accessible / إذا لم يعد رقم الجوال متاحاً:
+- Visit in person with valid ID / زيارة شخصية بهوية سارية
+- IT will reset and provide temporary password
+  ستقوم IT بإعادة التعيين وتقديم كلمة مرور مؤقتة
+- Customer must change temporary password on first login
+  يجب على العميل تغيير كلمة المرور المؤقتة عند أول تسجيل دخول
+
+────────────────────────────────────────────────────────────
+
+1.2 Account Locked / الحساب مقفل
+
+Account locks after 5 failed login attempts.
+يُقفَل الحساب بعد 5 محاولات تسجيل دخول فاشلة.
+
+Auto-unlock: After 30 minutes the account unlocks automatically
+فتح القفل التلقائي: بعد 30 دقيقة يُفتح الحساب تلقائياً
+
+Immediate unlock: Customer must visit in person or call IT support
+فتح القفل الفوري: يجب على العميل الزيارة الشخصية أو الاتصال بدعم IT
+
+IT Support Phone: 19XXX (Option 2)
+هاتف دعم IT: 19XXX (الخيار 2)
+Hours: Sunday-Thursday 8AM-10PM / الأحد-الخميس 8 صباحاً-10 مساءً
+
+────────────────────────────────────────────────────────────
+
+1.3 New Account Registration / تسجيل حساب جديد
+
+Who can register / من يمكنه التسجيل:
+- Any customer with an active account / أي عميل لديه حساب نشط
+- Employees automatically have accounts / الموظفون لديهم حسابات تلقائياً
+
+Registration steps / خطوات التسجيل:
+1. Visit portal.company-cs.com/register
+2. Enter National ID number / أدخل رقم بطاقة الهوية الوطنية
+3. System verifies against customer database
+   يتحقق النظام من قاعدة بيانات العملاء
+4. If found: OTP sent to registered mobile
+   إذا وُجد: يُرسَل OTP إلى الجوال المسجل
+5. If not found: visit in person to register
+   إذا لم يوجد: زيارة شخصية للتسجيل
+6. Set password and security question
+   تعيين كلمة المرور وسؤال الأمان
+
+════════════════════════════════════════════════════════════
+SECTION 2 — DOCUMENT DOWNLOAD ISSUES / مشاكل تنزيل المستندات
+════════════════════════════════════════════════════════════
+
+2.1 Cannot Download PDF / لا يمكن تنزيل PDF
+
+Common causes and solutions / الأسباب الشائعة والحلول:
+
+Problem: PDF opens blank / المشكلة: يفتح PDF فارغاً
+Solution: The PDF uses digital signatures which require Adobe Acrobat Reader DC.
+الحل: يستخدم PDF التوقيعات الرقمية التي تتطلب Adobe Acrobat Reader DC.
+Download free from: adobe.com/acrobat/pdf-reader
+تنزيل مجاني من: adobe.com/acrobat/pdf-reader
+Do NOT use browser built-in PDF viewer for official documents.
+لا تستخدم عارض PDF المدمج في المتصفح للمستندات الرسمية.
+
+Problem: Download button not working / المشكلة: زر التنزيل لا يعمل
+Solution 1: Disable browser popup blocker for portal site
+الحل 1: تعطيل حاجب النوافذ المنبثقة للمتصفح لموقع البوابة
+Solution 2: Try different browser (Chrome or Firefox recommended)
+الحل 2: جرب متصفحاً مختلفاً (يُنصح بـ Chrome أو Firefox)
+Solution 3: Clear browser cache: Ctrl+Shift+Delete → Clear all → Reload
+الحل 3: مسح ذاكرة التخزين المؤقت: Ctrl+Shift+Delete → مسح الكل → إعادة التحميل
+
+Problem: Download shows error "Document not ready"
+المشكلة: يظهر خطأ "المستند غير جاهز"
+Solution: Document is still being processed. Wait 10 minutes and try again.
+الحل: المستند لا يزال قيد المعالجة. انتظر 10 دقائق وحاول مجدداً.
+If persists after 1 hour: contact support with request number
+إذا استمر بعد ساعة: تواصل مع الدعم برقم الطلب
+
+────────────────────────────────────────────────────────────
+
+2.2 Document Shows Wrong Information / المستند يُظهر معلومات خاطئة
+
+Steps to report / خطوات الإبلاغ:
+1. DO NOT use the document — it is invalid until corrected
+   لا تستخدم المستند — إنه غير صالح حتى يُصحَّح
+2. Take a screenshot of the error / التقط صورة للخطأ
+3. Submit IT Form IT-301 — Document Correction Request
+   تقديم نموذج IT-301 — طلب تصحيح مستند
+4. Include: document type, request number, what is wrong, what should be correct
+   تضمين: نوع المستند، رقم الطلب، ما هو الخطأ، وما يجب أن يكون صحيحاً
+5. Corrected document issued within 24 hours at no additional charge
+   يصدر المستند المصحح خلال 24 ساعة دون رسوم إضافية
+
+════════════════════════════════════════════════════════════
+SECTION 3 — MOBILE APP SUPPORT / دعم تطبيق الجوال
+════════════════════════════════════════════════════════════
+
+3.1 App Download / تنزيل التطبيق
+
+Android: Search "Company CS" on Google Play Store
+أندرويد: ابحث عن "Company CS" على متجر Google Play
+
+iOS: Search "Company CS" on Apple App Store
+iOS: ابحث عن "Company CS" على متجر Apple App
+
+Current version: 4.2.1 (update if below this version)
+الإصدار الحالي: 4.2.1 (تحديث إذا كان الإصدار أقل من هذا)
+
+3.2 App Login Issues / مشاكل تسجيل الدخول في التطبيق
+
+Same credentials as portal / نفس بيانات الاعتماد كالبوابة
+If biometric not working: disable and re-enable in app settings
+إذا لم يعمل بصمة الإصبع: تعطيل وإعادة التفعيل في إعدادات التطبيق
+
+3.3 Notifications Not Working / الإشعارات لا تعمل
+
+Android: Settings → Apps → Company CS → Notifications → Allow
+أندرويد: الإعدادات → التطبيقات → Company CS → الإشعارات → السماح
+
+iOS: Settings → Notifications → Company CS → Allow Notifications
+iOS: الإعدادات → الإشعارات → Company CS → السماح بالإشعارات
+
+════════════════════════════════════════════════════════════
+SECTION 4 — DATA & PRIVACY / البيانات والخصوصية
+════════════════════════════════════════════════════════════
+
+4.1 Update Personal Information / تحديث المعلومات الشخصية
+
+Can be updated on portal / يمكن التحديث على البوابة:
+- Email address / عنوان البريد الإلكتروني
+- Phone number (requires OTP verification) / رقم الهاتف (يتطلب التحقق بـ OTP)
+- Mailing address / عنوان البريد
+
+Requires in-person visit / يتطلب زيارة شخصية:
+- National ID number change / تغيير رقم بطاقة الهوية الوطنية
+- Name change (with legal documentation) / تغيير الاسم (مع التوثيق القانوني)
+- Date of birth correction / تصحيح تاريخ الميلاد
+
+4.2 Data Export Request / طلب تصدير البيانات
+
+Customer has the right to request all their data.
+للعميل الحق في طلب جميع بياناته.
+
+Submit: IT-401 — Personal Data Export Request
+تقديم: IT-401 — طلب تصدير البيانات الشخصية
+Processing: 5 business days
+المعالجة: 5 أيام عمل
+Format: Password-protected ZIP file sent to registered email
+التنسيق: ملف ZIP محمي بكلمة مرور يُرسَل إلى البريد الإلكتروني المسجل
