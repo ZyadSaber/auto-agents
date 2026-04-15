@@ -1,7 +1,9 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { rateLimit } = require("express-rate-limit");
 const { Readable } = require("stream");
 const multer = require("multer");
 const FormData = require("form-data");
@@ -17,21 +19,28 @@ const upload = multer({ storage: multer.memoryStorage() });
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
-  console.error("FATAL: JWT_SECRET env var is not set. Set it in your .env file and restart.");
+  console.error(
+    "FATAL: JWT_SECRET env var is not set. Set it in your .env file and restart.",
+  );
   process.exit(1);
 }
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://127.0.0.1:3001")
-  .split(",").map(o => o.trim()).filter(Boolean);
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
 
-app.use(cors({
-  origin: (origin, cb) => {
-    // Allow requests with no origin (e.g. curl, Postman, server-to-server)
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: origin '${origin}' not allowed`));
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      return cb(null, true);
+      // Allow requests with no origin (e.g. curl, Postman, server-to-server)
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS: origin '${origin}' not allowed`));
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 // Proxy error helper — logs the real error server-side, returns a safe message to client
@@ -86,6 +95,35 @@ const requireSuperAdmin = (req, res, next) => {
   }
 };
 
+// ─── Rate Limiters ────────────────────────────────────────────────────────────
+// Key by authenticated user ID — NOT by IP, because all internal users share
+// the same LAN/NAT address. Limiters are applied per-route after authenticateToken.
+
+const makeLimiter = ({ max, windowMs, label }) =>
+  rateLimit({
+    windowMs,
+    max,
+    // Use JWT user ID so each user has their own counter
+    keyGenerator: (req) => String(req.user?.id ?? req.ip),
+    standardHeaders: true,   // Return RateLimit-* headers
+    legacyHeaders:   false,  // Disable X-RateLimit-* headers
+    handler: (req, res) => {
+      console.warn(`[rate-limit] ${label} — user ${req.user?.id ?? req.ip} exceeded limit`);
+      res.status(429).json({
+        error: `Too many requests. You can send ${max} ${label} requests per ${windowMs / 60000} minute(s). Please slow down.`,
+      });
+    },
+  });
+
+// LLM chat — 20 messages per 5 minutes per user
+// Reasoning: a real user sending > 20 messages in 5 min is either a script or hammering the GPU
+const chatLimiter = makeLimiter({ max: 20, windowMs: 5 * 60 * 1000, label: "chat" });
+
+// Doc upload — 10 uploads per 10 minutes per user
+// Reasoning: each upload triggers a full embedding pipeline run
+const uploadLimiter = makeLimiter({ max: 10, windowMs: 10 * 60 * 1000, label: "doc upload" });
+// ──────────────────────────────────────────────────────────────────────────────
+
 // Auth Routes
 app.post("/api/auth/login", async (req, res) => {
   const { username, password } = req.body;
@@ -94,7 +132,12 @@ app.post("/api/auth/login", async (req, res) => {
 
   if (user && (await bcrypt.compare(password, user.password_hash))) {
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role, name: user.name },
+      {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        name: user.name,
+      },
       JWT_SECRET,
       { expiresIn: "24h" },
     );
@@ -143,13 +186,14 @@ const isArabic = (text) => {
 };
 
 // Proxy Chat Stream to Ollama with Language Routing
-app.post("/api/chat", authenticateToken, async (req, res) => {
+app.post("/api/chat", authenticateToken, chatLimiter, async (req, res) => {
   const abortController = new AbortController();
-  
+
   // Choose model based on input language if not explicitly locked by the user
   let targetModel = req.body.model;
-  const lastUserMessage = req.body.messages?.[req.body.messages.length - 1]?.content || "";
-  
+  const lastUserMessage =
+    req.body.messages?.[req.body.messages.length - 1]?.content || "";
+
   if (isArabic(lastUserMessage)) {
     // Priority: Qwen 2.5 (High Performance) -> Aya (Multilingual Specialist) -> Default
     targetModel = process.env.ARABIC_MODEL || "qwen2.5:72b";
@@ -161,15 +205,20 @@ app.post("/api/chat", authenticateToken, async (req, res) => {
   // If user explicitly picked a model in the UI dropdown, validate and respect it
   if (req.body.model && req.body.model !== "auto") {
     try {
-      const ollamaBase = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+      const ollamaBase =
+        process.env.OLLAMA_BASE_URL || "http://localhost:11434";
       const tagsRes = await fetch(`${ollamaBase}/api/tags`);
       if (tagsRes.ok) {
         const { models = [] } = await tagsRes.json();
-        const available = models.map(m => m.model || m.name);
+        const available = models.map((m) => m.model || m.name);
         if (available.includes(req.body.model)) {
           targetModel = req.body.model;
         } else {
-          return res.status(400).json({ error: `Model '${req.body.model}' is not available on this server.` });
+          return res
+            .status(400)
+            .json({
+              error: `Model '${req.body.model}' is not available on this server.`,
+            });
         }
       } else {
         // Ollama unreachable — fall through with routed model, don't block the request
@@ -180,7 +229,7 @@ app.post("/api/chat", authenticateToken, async (req, res) => {
     }
   }
 
-  res.on('close', () => {
+  res.on("close", () => {
     if (!res.writableEnded) {
       abortController.abort();
       console.log(`Client disconnected, aborting ${targetModel} request.`);
@@ -194,9 +243,9 @@ app.post("/api/chat", authenticateToken, async (req, res) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...req.body,
-        model: targetModel // Override with our routed model
+        model: targetModel, // Override with our routed model
       }),
-      signal: abortController.signal
+      signal: abortController.signal,
     });
 
     if (!response.ok) throw new Error(`Ollama Error: ${response.statusText}`);
@@ -208,93 +257,118 @@ app.post("/api/chat", authenticateToken, async (req, res) => {
       res.end();
     }
   } catch (err) {
-    if (err.name === 'AbortError') {
+    if (err.name === "AbortError") {
       console.log("Ollama request was aborted.");
     } else {
       console.error("Chat error:", err.message);
-      if (!res.headersSent) res.status(500).json({ error: "Ollama chat failed" });
+      if (!res.headersSent)
+        res.status(500).json({ error: "Ollama chat failed" });
     }
   }
 });
 
 // Proxy Pull Stream
-app.post("/api/models/pull", authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const ollamaBase = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-    const response = await fetch(`${ollamaBase}/api/pull`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req.body), // { name: "llama3" }
-    });
+app.post(
+  "/api/models/pull",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const ollamaBase =
+        process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+      const response = await fetch(`${ollamaBase}/api/pull`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req.body), // { name: "llama3" }
+      });
 
-    if (!response.ok) throw new Error(`Ollama Error: ${response.statusText}`);
+      if (!response.ok) throw new Error(`Ollama Error: ${response.statusText}`);
 
-    res.setHeader("Content-Type", "application/x-ndjson");
-    if (response.body) {
-      Readable.fromWeb(response.body).pipe(res);
-    } else {
-      res.end();
+      res.setHeader("Content-Type", "application/x-ndjson");
+      if (response.body) {
+        Readable.fromWeb(response.body).pipe(res);
+      } else {
+        res.end();
+      }
+    } catch (err) {
+      proxyError(res, "pull model", err);
     }
-  } catch (err) {
-    proxyError(res, "pull model", err);
-  }
-});
+  },
+);
 
 // Get currently running models
-app.get("/api/models/ps", authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const ollamaBase = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-    const response = await fetch(`${ollamaBase}/api/ps`);
-    if (!response.ok) throw new Error("Failed to fetch running models");
-    res.json(await response.json());
-  } catch (err) {
-    proxyError(res, "fetch running models", err);
-  }
-});
+app.get(
+  "/api/models/ps",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const ollamaBase =
+        process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+      const response = await fetch(`${ollamaBase}/api/ps`);
+      if (!response.ok) throw new Error("Failed to fetch running models");
+      res.json(await response.json());
+    } catch (err) {
+      proxyError(res, "fetch running models", err);
+    }
+  },
+);
 
 // Delete a model
-app.delete("/api/models/:name", authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const ollamaBase = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-    const response = await fetch(`${ollamaBase}/api/delete`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: req.params.name })
-    });
-    if (!response.ok) throw new Error("Failed to delete model");
-    res.json({ success: true });
-  } catch (err) {
-    proxyError(res, "delete model", err);
-  }
-});
+app.delete(
+  "/api/models/:name",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const ollamaBase =
+        process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+      const response = await fetch(`${ollamaBase}/api/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: req.params.name }),
+      });
+      if (!response.ok) throw new Error("Failed to delete model");
+      res.json({ success: true });
+    } catch (err) {
+      proxyError(res, "delete model", err);
+    }
+  },
+);
 
 // --- Documents Proxy ---
 const DOCS_AGENT_URL = process.env.DOCS_AGENT_URL || "http://localhost:8100";
 const AGENT_API_KEY = process.env.AGENT_API_KEY || "cs-internal-agent-key";
 
-app.post("/api/docs/upload", authenticateToken, upload.single("file"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+app.post(
+  "/api/docs/upload",
+  authenticateToken,
+  uploadLimiter,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    const form = new FormData();
-    form.append("file", req.file.buffer, req.file.originalname);
+      const form = new FormData();
+      form.append("file", req.file.buffer, req.file.originalname);
 
-    const response = await fetch(`${DOCS_AGENT_URL}/upload`, {
-      method: "POST",
-      headers: {
-        "X-API-Key": AGENT_API_KEY,
-        ...form.getHeaders(),
-      },
-      body: form,
-    });
+      const response = await fetch(`${DOCS_AGENT_URL}/upload`, {
+        method: "POST",
+        headers: {
+          "X-API-Key": AGENT_API_KEY,
+          ...form.getHeaders(),
+        },
+        body: form,
+      });
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || "Upload failed");
-    res.json(data);
-  } catch (err) {
-    proxyError(res, "upload doc", err);
-  }
-});
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Upload failed");
+      res.json(data);
+    } catch (err) {
+      proxyError(res, "upload doc", err);
+    }
+  },
+);
 
 app.get("/api/docs", authenticateToken, async (req, res) => {
   try {
@@ -302,26 +376,36 @@ app.get("/api/docs", authenticateToken, async (req, res) => {
       headers: { "X-API-Key": AGENT_API_KEY },
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || "Failed to fetch documents");
+    if (!response.ok)
+      throw new Error(data.detail || "Failed to fetch documents");
     res.json(data);
   } catch (err) {
     proxyError(res, "fetch docs", err);
   }
 });
 
-app.delete("/api/docs/:filename", authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const response = await fetch(`${DOCS_AGENT_URL}/documents/${encodeURIComponent(req.params.filename)}`, {
-      method: "DELETE",
-      headers: { "X-API-Key": AGENT_API_KEY },
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || "Failed to delete document");
-    res.json(data);
-  } catch (err) {
-    proxyError(res, "delete doc", err);
-  }
-});
+app.delete(
+  "/api/docs/:filename",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        `${DOCS_AGENT_URL}/documents/${encodeURIComponent(req.params.filename)}`,
+        {
+          method: "DELETE",
+          headers: { "X-API-Key": AGENT_API_KEY },
+        },
+      );
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.detail || "Failed to delete document");
+      res.json(data);
+    } catch (err) {
+      proxyError(res, "delete doc", err);
+    }
+  },
+);
 
 // --- Knowledge Base Proxy ---
 app.post("/api/knowledge/learn", authenticateToken, async (req, res) => {
@@ -335,7 +419,8 @@ app.post("/api/knowledge/learn", authenticateToken, async (req, res) => {
       body: JSON.stringify(req.body),
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || "Failed to learn solution");
+    if (!response.ok)
+      throw new Error(data.detail || "Failed to learn solution");
     res.json(data);
   } catch (err) {
     proxyError(res, "learn solution", err);
@@ -348,7 +433,8 @@ app.get("/api/knowledge/solutions", authenticateToken, async (req, res) => {
       headers: { "X-API-Key": AGENT_API_KEY },
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || "Failed to fetch solutions");
+    if (!response.ok)
+      throw new Error(data.detail || "Failed to fetch solutions");
     res.json(data);
   } catch (err) {
     proxyError(res, "fetch solutions", err);
@@ -379,35 +465,45 @@ app.get("/api/bridge/qr", authenticateToken, async (req, res) => {
   }
 });
 
-app.post("/api/bridge/whatsapp/reset", authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const response = await fetch(`${BRIDGE_URL}/api/whatsapp/reset`, {
-      method: "POST",
-      headers: { "X-API-Key": AGENT_API_KEY }
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    proxyError(res, "WhatsApp reset", err);
-  }
-});
+app.post(
+  "/api/bridge/whatsapp/reset",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const response = await fetch(`${BRIDGE_URL}/api/whatsapp/reset`, {
+        method: "POST",
+        headers: { "X-API-Key": AGENT_API_KEY },
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (err) {
+      proxyError(res, "WhatsApp reset", err);
+    }
+  },
+);
 
-app.post("/api/bridge/config", authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const response = await fetch(`${BRIDGE_URL}/api/config`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": AGENT_API_KEY
-      },
-      body: JSON.stringify(req.body)
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    proxyError(res, "bridge config update", err);
-  }
-});
+app.post(
+  "/api/bridge/config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const response = await fetch(`${BRIDGE_URL}/api/config`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": AGENT_API_KEY,
+        },
+        body: JSON.stringify(req.body),
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (err) {
+      proxyError(res, "bridge config update", err);
+    }
+  },
+);
 
 app.get("/api/bridge/stats", authenticateToken, async (req, res) => {
   try {
@@ -419,38 +515,56 @@ app.get("/api/bridge/stats", authenticateToken, async (req, res) => {
   }
 });
 
-app.get("/api/bridge/logs", authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const response = await fetch(`${BRIDGE_URL}/api/logs`);
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    proxyError(res, "bridge logs", err);
-  }
-});
+app.get(
+  "/api/bridge/logs",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const response = await fetch(`${BRIDGE_URL}/api/logs`);
+      const data = await response.json();
+      res.json(data);
+    } catch (err) {
+      proxyError(res, "bridge logs", err);
+    }
+  },
+);
 
-app.post("/api/bridge/command", authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const response = await fetch(`${BRIDGE_URL}/api/commands`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-API-Key": AGENT_API_KEY },
-      body: JSON.stringify(req.body)
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    proxyError(res, "bridge command", err);
-  }
-});
+app.post(
+  "/api/bridge/command",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const response = await fetch(`${BRIDGE_URL}/api/commands`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": AGENT_API_KEY,
+        },
+        body: JSON.stringify(req.body),
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (err) {
+      proxyError(res, "bridge command", err);
+    }
+  },
+);
 
 // --- Customer Conversations Proxy ---
-const GENERAL_AGENT_URL = process.env.GENERAL_AGENT_URL || "http://localhost:8200";
+const GENERAL_AGENT_URL =
+  process.env.GENERAL_AGENT_URL || "http://localhost:8200";
 
 app.get("/api/customers/sessions", authenticateToken, async (req, res) => {
   try {
     const [docsRes, genRes] = await Promise.all([
-      fetch(`${DOCS_AGENT_URL}/sessions`, { headers: { "X-API-Key": AGENT_API_KEY } }),
-      fetch(`${GENERAL_AGENT_URL}/sessions`, { headers: { "X-API-Key": AGENT_API_KEY } })
+      fetch(`${DOCS_AGENT_URL}/sessions`, {
+        headers: { "X-API-Key": AGENT_API_KEY },
+      }),
+      fetch(`${GENERAL_AGENT_URL}/sessions`, {
+        headers: { "X-API-Key": AGENT_API_KEY },
+      }),
     ]);
 
     const docsSessions = docsRes.ok ? await docsRes.json() : [];
@@ -458,38 +572,50 @@ app.get("/api/customers/sessions", authenticateToken, async (req, res) => {
 
     // Merge by session_id, taking the latest last_seen
     const sessionMap = new Map();
-    [...docsSessions, ...genSessions].forEach(s => {
+    [...docsSessions, ...genSessions].forEach((s) => {
       const existing = sessionMap.get(s.session_id);
       if (!existing || s.last_seen > existing.last_seen) {
         sessionMap.set(s.session_id, s);
       }
     });
 
-    res.json(Array.from(sessionMap.values()).sort((a, b) => b.last_seen - a.last_seen));
+    res.json(
+      Array.from(sessionMap.values()).sort((a, b) => b.last_seen - a.last_seen),
+    );
   } catch (err) {
     proxyError(res, "fetch customer sessions", err);
   }
 });
 
-app.get("/api/customers/history/:sessionId", authenticateToken, async (req, res) => {
-  try {
-    // Try docs agent first, then fallback to general
-    let response = await fetch(`${DOCS_AGENT_URL}/history/${encodeURIComponent(req.params.sessionId)}`, {
-      headers: { "X-API-Key": AGENT_API_KEY }
-    });
-    
-    if (!response.ok) {
-       response = await fetch(`${GENERAL_AGENT_URL}/history/${encodeURIComponent(req.params.sessionId)}`, {
-        headers: { "X-API-Key": AGENT_API_KEY }
-      });
-    }
+app.get(
+  "/api/customers/history/:sessionId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      // Try docs agent first, then fallback to general
+      let response = await fetch(
+        `${DOCS_AGENT_URL}/history/${encodeURIComponent(req.params.sessionId)}`,
+        {
+          headers: { "X-API-Key": AGENT_API_KEY },
+        },
+      );
 
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    proxyError(res, "fetch conversation history", err);
-  }
-});
+      if (!response.ok) {
+        response = await fetch(
+          `${GENERAL_AGENT_URL}/history/${encodeURIComponent(req.params.sessionId)}`,
+          {
+            headers: { "X-API-Key": AGENT_API_KEY },
+          },
+        );
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (err) {
+      proxyError(res, "fetch conversation history", err);
+    }
+  },
+);
 
 // --- Interactive Terminal (PTY) ---
 let wss;
@@ -532,10 +658,16 @@ server.on("upgrade", (request, socket, head) => {
   if (url.pathname === "/terminal" && wss) {
     // Expect token in query param: ws://host/terminal?token=<jwt>
     const token = url.searchParams.get("token");
-    if (!token) { socket.destroy(); return; }
+    if (!token) {
+      socket.destroy();
+      return;
+    }
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
-      if (err || user?.role !== "Super Admin") { socket.destroy(); return; }
+      if (err || user?.role !== "Super Admin") {
+        socket.destroy();
+        return;
+      }
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request);
       });
@@ -545,14 +677,14 @@ server.on("upgrade", (request, socket, head) => {
   }
 });
 
-
-
 // Public branding config — safe to expose, no secrets
 app.get("/api/config/public", (req, res) => {
   res.json({
-    systemName: process.env.SYSTEM_NAME || "AI Customer Service",
-    companyName: process.env.COMPANY_NAME || "",
-    tagline: process.env.SYSTEM_TAGLINE || "Powered by local AI",
+    systemName:   process.env.SYSTEM_NAME    || "AI Customer Service",
+    companyName:  process.env.COMPANY_NAME   || "",
+    tagline:      process.env.SYSTEM_TAGLINE || "Powered by local AI",
+    arabicModel:  process.env.ARABIC_MODEL   || "qwen2.5:72b",
+    englishModel: process.env.ENGLISH_MODEL  || "llama3.3:70b",
   });
 });
 
